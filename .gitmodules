@@ -1,0 +1,9 @@
+[submodule "extern/raylib"]
+	path = extern/raylib
+	url = https://github.com/raysan5/raylib
+[submodule "extern/raylib-cpp"]
+	path = extern/raylib-cpp
+	url = https://github.com/robloach/raylib-cpp
+[submodule "extern/yngine"]
+	path = extern/yngine
+	url = ./extern/yngine
