@@ -35,7 +35,7 @@ HVec2& HVec2::operator+=(const HVec2 rhs) {
     return *this;
 }
 
-HVec2 HVec2::operator*(int32_t rhs) {
+HVec2 HVec2::operator*(int32_t rhs) const {
     return HVec2{this->x * rhs, this->y * rhs};
 }
 
@@ -52,6 +52,25 @@ Vec2 HVec2::to_world() const {
 
 HVec2 HVec2::up() {
     return HVec2{-1, 1};
+}
+
+HVec2 HVec2::from_direction(Yngine::Direction direction) {
+    switch (direction) {
+    case Yngine::Direction::SE:
+        return HVec2{1, 0};
+    case Yngine::Direction::NE:
+        return HVec2{0, 1};
+    case Yngine::Direction::N:
+        return HVec2{-1, 1};
+    case Yngine::Direction::NW:
+        return HVec2{-1, 0};
+    case Yngine::Direction::SW:
+        return HVec2{0, -1};
+    case Yngine::Direction::S:
+        return HVec2{1, -1};
+    default:
+        assert(false);
+    }
 }
 
 HVec2 Vec2::from_world() const {
@@ -98,6 +117,21 @@ HVec3& HVec3::operator/=(const int32_t rhs) {
     this->y /= rhs;
     this->z /= rhs;
     return *this;
+}
+
+bool HVec3::operator==(const HVec3 rhs) const {
+    return
+        this->x == rhs.x &&
+        this->y == rhs.y &&
+        this->z == rhs.z;
+}
+
+HVec3 HVec3::operator-(const HVec3 rhs) const {
+    return HVec3{
+        this->x - rhs.x,
+        this->y - rhs.y,
+        this->z - rhs.z
+    };
 }
 
 HVec3 HVec3::operator/(const int32_t rhs) const {
@@ -162,4 +196,31 @@ HVec3 HVec3::closest_straight_line() const {
     }
 
     return result;
+}
+
+Yngine::Direction HVec3::direction_to(HVec3 to) const {
+    assert(*this != to);
+
+    auto unit_diff = to - *this;
+    unit_diff /= unit_diff.length();
+
+    assert(unit_diff.length() == 1);
+
+    const auto unit_diff_2 = HVec2{unit_diff};
+
+    if (unit_diff_2 == HVec2{1, 0}) {
+        return Yngine::Direction::SE;
+    } else if (unit_diff_2 == HVec2{0, 1}) {
+        return Yngine::Direction::NE;
+    } else if (unit_diff_2 == HVec2{-1, 1}) {
+        return Yngine::Direction::N;
+    } else if (unit_diff_2 == HVec2{-1, 0}) {
+        return Yngine::Direction::NW;
+    } else if (unit_diff_2 == HVec2{0, -1}) {
+        return Yngine::Direction::SW;
+    } else if (unit_diff_2 == HVec2{1, -1}) {
+        return Yngine::Direction::S;
+    }
+
+    assert(false);
 }

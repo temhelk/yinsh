@@ -18,6 +18,8 @@ public:
 
 private:
     void update();
+    std::optional<Yngine::Move> get_player_move();
+
     void render();
     void draw_board();
 

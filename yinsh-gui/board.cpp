@@ -1,6 +1,10 @@
 #include <yinsh-gui/board.hpp>
+#include <yinsh-gui/utils.hpp>
+
+#include <yngine/bitboard.hpp>
 
 #include <cassert>
+#include <algorithm>
 
 BoardStorage::BoardStorage() : nodes{} {
     for (int32_t x = 0; x < 11; x++) {
@@ -117,6 +121,120 @@ BoardState::NextAction BoardState::get_next_action() const {
 
 bool BoardState::is_whites_move() const {
     return this->white_moves_next;
+}
+
+bool BoardState::is_move_legal(Yngine::Move move) const {
+    const bool is_legal = std::visit(variant_overloaded{
+        [this](Yngine::PlaceRingMove move) -> bool {
+            if (this->next_action != NextAction::RingPlacement)
+                return false;
+
+            const auto move_pos = to_hvector2(
+                Yngine::Bitboard::index_to_coords(move.index)
+            );
+
+            if (this->is_in_game(move_pos) &&
+                this->get_at(move_pos) == Node::Empty) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+        [this](Yngine::RingMove move) -> bool {
+            if (this->next_action != NextAction::RingMovement)
+                return false;
+
+            const auto from = to_hvector2(Yngine::Bitboard::index_to_coords(move.from));
+
+            if (!this->is_in_game(from))
+                return false;
+
+            const auto correct_ring = this->white_moves_next ?
+                Node::WhiteRing : Node::BlackRing;
+
+            if (this->get_at(from) != correct_ring)
+                return false;
+
+            const auto allowed_moves = this->get_ring_moves(from);
+
+            const auto move_is_allowed =
+                std::find(
+                    allowed_moves.begin(),
+                    allowed_moves.end(),
+                    to_hvector2(Yngine::Bitboard::index_to_coords(move.to))
+                ) != allowed_moves.end();
+
+            return move_is_allowed;
+        },
+        [this](Yngine::RemoveRowMove move) -> bool {
+            if (this->next_action != NextAction::RowRemoval)
+                return false;
+
+            auto correct_marker = this->is_whites_move() ?
+                Node::WhiteMarker : Node::BlackMarker;
+
+            const auto from = to_hvector2(Yngine::Bitboard::index_to_coords(move.from));
+            const auto dir = HVec2::from_direction(move.direction);
+            const auto row_remove_to = from + dir * 4;
+
+            bool row_is_correct = true;
+
+            auto current = from;
+            while (current != (row_remove_to + dir)) {
+                if (!this->is_in_game(current) ||
+                    this->get_at(current) != correct_marker) {
+                    row_is_correct = false;
+                    break;
+                }
+
+                current += dir;
+            }
+
+            return row_is_correct;
+        },
+        [this](Yngine::RemoveRingMove move) -> bool {
+            if (this->next_action != NextAction::RingRemoval)
+                return false;
+
+            const auto correct_ring = this->is_whites_move() ?
+                Node::WhiteRing : Node::BlackRing;
+
+            const auto pos = to_hvector2(Yngine::Bitboard::index_to_coords(move.index));
+
+            if (this->is_in_game(pos) &&
+                this->get_at(pos) == correct_ring) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+    }, move);
+
+    return is_legal;
+}
+
+void BoardState::apply_move(Yngine::Move move) {
+    std::visit(variant_overloaded{
+        [this](Yngine::PlaceRingMove move) {
+            const auto pos = to_hvector2(Yngine::Bitboard::index_to_coords(move.index));
+            this->place_ring(pos);
+        },
+        [this](Yngine::RingMove move) {
+            const auto from = to_hvector2(Yngine::Bitboard::index_to_coords(move.from));
+            const auto to = to_hvector2(Yngine::Bitboard::index_to_coords(move.to));
+            this->move_ring(from, to);
+        },
+        [this](Yngine::RemoveRowMove move) {
+            const auto from = to_hvector2(Yngine::Bitboard::index_to_coords(move.from));
+            const auto dir = HVec2::from_direction(move.direction);
+            const auto to = from + dir * 4;
+            this->remove_row(from, to);
+        },
+        [this](Yngine::RemoveRingMove move) {
+            const auto pos = to_hvector2(Yngine::Bitboard::index_to_coords(move.index));
+            this->remove_ring(pos);
+        },
+    }, move);
 }
 
 std::vector<HVec2> BoardState::get_ring_moves(HVec2 pos) const {

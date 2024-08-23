@@ -34,14 +34,25 @@ void Game::run() {
 }
 
 void Game::update() {
+    const auto move = this->get_player_move();
+
+    if (move) {
+        if (this->board_state.is_move_legal(*move)) {
+            this->board_state.apply_move(*move);
+        }
+    }
+}
+
+std::optional<Yngine::Move> Game::get_player_move() {
     switch (this->board_state.get_next_action()) {
     case BoardState::NextAction::RingPlacement: {
         if (raylib::Mouse::IsButtonReleased(MOUSE_BUTTON_LEFT)) {
             const auto clicked_pos = this->get_mouse_hex_pos();
 
-            if (this->board_state.is_in_game(clicked_pos) &&
-                this->board_state.get_at(clicked_pos) == Node::Empty) {
-                this->board_state.place_ring(clicked_pos);
+            if (this->board_state.is_in_game(clicked_pos)) {
+                return Yngine::PlaceRingMove{
+                    Yngine::Bitboard::coords_to_index(clicked_pos.x, clicked_pos.y)
+                };
             }
         }
     } break;
@@ -57,9 +68,19 @@ void Game::update() {
                         clicked_pos) != this->ring_moves.end();
 
                 if (clicked_on_possible_move_node) {
-                    this->board_state.move_ring(*this->selected_ring, clicked_pos);
                     this->selected_ring = std::nullopt;
-                    break;
+
+                    return Yngine::RingMove{
+                        Yngine::Bitboard::coords_to_index(
+                            (*this->selected_ring).x,
+                            (*this->selected_ring).y
+                        ),
+                        Yngine::Bitboard::coords_to_index(
+                            clicked_pos.x,
+                            clicked_pos.y
+                        ),
+                        HVec3{*this->selected_ring}.direction_to(clicked_pos)
+                    };
                 }
             }
 
@@ -82,70 +103,60 @@ void Game::update() {
     case BoardState::NextAction::RowRemoval: {
         if (raylib::Mouse::IsButtonPressed(MOUSE_BUTTON_LEFT)) {
             const auto selected_node = this->get_mouse_hex_pos();
-            this->row_remove_from = selected_node;
+
+            if (this->board_state.is_in_game(selected_node)) {
+                this->row_remove_from = selected_node;
+            }
         }
 
         if (this->row_remove_from) {
             const auto from = *this->row_remove_from;
-            const auto to = this->get_mouse_hex_pos();
+            const auto hovered = this->get_mouse_hex_pos();
 
-            const auto diff = HVec3{to - from};
+            const auto diff = HVec3{hovered - from};
             const auto straight_diff = diff.closest_straight_line();
 
             const auto row_remove_to = from + straight_diff;
-            this->row_remove_to = row_remove_to;
 
-            if (raylib::Mouse::IsButtonReleased(MOUSE_BUTTON_LEFT)) {
-                const auto row_remove_from = *this->row_remove_from;
-                this->row_remove_from = std::nullopt;
+            if (this->board_state.is_in_game(row_remove_to)) {
+                this->row_remove_to = row_remove_to;
 
-                // Check that we remove 5 markers of correct color
-                const auto diff = HVec3{row_remove_to - row_remove_from};
+                if (raylib::Mouse::IsButtonReleased(MOUSE_BUTTON_LEFT)) {
+                    this->row_remove_from = std::nullopt;
 
-                // Length should be equal to 4 and not 5 because we have 1 additional point at
-                // the beginning of the row
-                if (diff.length() == 4) {
-                    auto correct_marker = this->board_state.is_whites_move() ?
-                        Node::WhiteMarker : Node::BlackMarker;
+                    const auto diff = HVec3{row_remove_to - from};
 
-                    const auto dir = diff / diff.length();
-
-                    bool row_is_correct = true;
-
-                    auto current = row_remove_from;
-                    while (current != (row_remove_to + dir)) {
-                        if (!this->board_state.is_in_game(current) ||
-                            this->board_state.get_at(current) != correct_marker) {
-                            row_is_correct = false;
-                            break;
-                        }
-
-                        current += dir;
+                    if (diff.length() == 4) {
+                        return Yngine::RemoveRowMove{
+                            Yngine::Bitboard::coords_to_index(from.x, from.y),
+                            HVec3{from}.direction_to(row_remove_to)
+                        };
                     }
-
-                    if (row_is_correct) {
-                        this->board_state.remove_row(row_remove_from, row_remove_to);
-                    }
+                }
+            } else {
+                if (raylib::Mouse::IsButtonReleased(MOUSE_BUTTON_LEFT)) {
+                    this->row_remove_from = std::nullopt;
                 }
             }
         }
     } break;
     case BoardState::NextAction::RingRemoval: {
         if (raylib::Mouse::IsButtonReleased(MOUSE_BUTTON_LEFT)) {
-            const auto correct_ring = this->board_state.is_whites_move() ?
-                Node::WhiteRing : Node::BlackRing;
-
             const auto clicked_pos = this->get_mouse_hex_pos();
 
-            if (this->board_state.is_in_game(clicked_pos) &&
-                this->board_state.get_at(clicked_pos) == correct_ring) {
-                this->board_state.remove_ring(clicked_pos);
+            if (this->board_state.is_in_game(clicked_pos)) {
+                return Yngine::RemoveRingMove{
+                    Yngine::Bitboard::coords_to_index(clicked_pos.x, clicked_pos.y)
+                };
             }
         }
     } break;
     case BoardState::NextAction::GameOver: {
+        assert(false);
     } break;
     }
+
+    return std::nullopt;
 }
 
 void Game::render() {

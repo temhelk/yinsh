@@ -3,6 +3,8 @@
 
 #include <yinsh-gui/coords.hpp>
 
+#include <yngine/moves.hpp>
+
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -59,14 +61,17 @@ public:
     Node get_at(HVec2 pos) const;
     bool is_whites_move() const;
 
+    bool is_move_legal(Yngine::Move move) const;
+    void apply_move(Yngine::Move move);
+
     std::vector<HVec2> get_ring_moves(HVec2 pos) const;
 
+private:
     void place_ring(HVec2 pos);
     void move_ring(HVec2 from, HVec2 to);
     void remove_row(HVec2 from, HVec2 to);
     void remove_ring(HVec2 pos);
 
-private:
     // Accepts last move from and to coordinates because that's the place where
     // rows might have had formed
     void check_for_rows_and_change_state(HVec2 from, HVec2 to);
