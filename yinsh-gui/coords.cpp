@@ -69,7 +69,7 @@ HVec2 HVec2::from_direction(Yngine::Direction direction) {
     case Yngine::Direction::S:
         return HVec2{1, -1};
     default:
-        assert(false);
+        abort();
     }
 }
 
@@ -222,5 +222,5 @@ Yngine::Direction HVec3::direction_to(HVec3 to) const {
         return Yngine::Direction::S;
     }
 
-    assert(false);
+    abort();
 }
