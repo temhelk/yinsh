@@ -12,5 +12,14 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_subdirectory(extern)
 add_subdirectory(yinsh-gui)
+
+add_subdirectory(extern/yngine)
+target_link_libraries(Yinsh-gui PRIVATE Yngine::Yngine)
+
+add_subdirectory(extern/raylib)
+target_link_libraries(Yinsh-gui PRIVATE raylib)
+
+add_subdirectory(extern/raylib-cpp)
+target_link_libraries(Yinsh-gui PRIVATE raylib_cpp)
+

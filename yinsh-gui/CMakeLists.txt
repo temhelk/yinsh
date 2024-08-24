@@ -21,6 +21,4 @@ target_compile_definitions(
     $<$<CONFIG:Debug>:DEBUG>
 )
 
-target_include_directories(Yngine PUBLIC ${PROJECT_SOURCE_DIR})
-
-target_link_libraries(Yinsh-gui PRIVATE extern)
+target_include_directories(Yinsh-gui PUBLIC ${PROJECT_SOURCE_DIR})

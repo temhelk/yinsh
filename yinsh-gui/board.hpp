@@ -61,6 +61,8 @@ public:
     Node get_at(HVec2 pos) const;
     bool is_whites_move() const;
 
+    bool ring_moves_available() const;
+
     bool is_move_legal(Yngine::Move move) const;
     void apply_move(Yngine::Move move);
 

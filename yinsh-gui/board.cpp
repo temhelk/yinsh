@@ -123,6 +123,27 @@ bool BoardState::is_whites_move() const {
     return this->white_moves_next;
 }
 
+bool BoardState::ring_moves_available() const {
+    const auto correct_ring = this->white_moves_next ?
+        Node::WhiteRing : Node::BlackRing;
+
+    for (int y = 0; y < 11; y++) {
+        for (int x = 0; x < 11; x++) {
+            const auto pos = HVec2{x, y};
+
+            if (this->is_in_game(pos) &&
+                this->get_at(pos) == correct_ring) {
+                const auto moves = this->get_ring_moves(pos);
+                if (moves.size() != 0) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 bool BoardState::is_move_legal(Yngine::Move move) const {
     const bool is_legal = std::visit(variant_overloaded{
         [this](Yngine::PlaceRingMove move) -> bool {
@@ -208,6 +229,12 @@ bool BoardState::is_move_legal(Yngine::Move move) const {
                 return false;
             }
         },
+        [this](Yngine::PassMove move) -> bool {
+            if (this->next_action != NextAction::RingMovement)
+                return false;
+
+            return !this->ring_moves_available();
+        }
     }, move);
 
     return is_legal;
@@ -233,6 +260,10 @@ void BoardState::apply_move(Yngine::Move move) {
         [this](Yngine::RemoveRingMove move) {
             const auto pos = to_hvector2(Yngine::Bitboard::index_to_coords(move.index));
             this->remove_ring(pos);
+        },
+        [this](Yngine::PassMove move) {
+            this->white_made_last_movement = !this->white_made_last_movement;
+            this->white_moves_next = !this->white_moves_next;
         },
     }, move);
 }

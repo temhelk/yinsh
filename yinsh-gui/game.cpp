@@ -57,6 +57,12 @@ std::optional<Yngine::Move> Game::get_player_move() {
         }
     } break;
     case BoardState::NextAction::RingMovement: {
+        // @Speed: calculating that every frame is wasteful, we only need to
+        // do it once when we get to this state
+        if (!this->board_state.ring_moves_available()) {
+            return Yngine::PassMove{};
+        }
+
         if (raylib::Mouse::IsButtonReleased(MOUSE_BUTTON_LEFT)) {
             const auto clicked_pos = this->get_mouse_hex_pos();
 
