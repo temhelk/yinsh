@@ -45,7 +45,7 @@ HVec2 operator*(int32_t lhs, HVec2 rhs) {
 
 Vec2 HVec2::to_world() const {
     return Vec2{
-        (this->x + this->y) * (SQRT_THREE / 2.f),
+        (this->x + this->y) * (std::numbers::sqrt3_v<float> / 2.f),
         (this->x - this->y) / 2.f
     };
 }
@@ -75,8 +75,8 @@ HVec2 HVec2::from_direction(Yngine::Direction direction) {
 
 HVec2 Vec2::from_world() const {
     auto frac = Vec3{
-        this->x / SQRT_THREE + this->y,
-        this->x / SQRT_THREE - this->y,
+        this->x / std::numbers::sqrt3_v<float> + this->y,
+        this->x / std::numbers::sqrt3_v<float> - this->y,
         0
     };
     frac.z = -frac.x - frac.y;

@@ -34,12 +34,23 @@ void Game::run() {
 }
 
 void Game::update() {
-    const auto move = this->get_player_move();
+    if (this->board_state.get_next_action() == BoardState::NextAction::GameOver)
+        return;
 
-    if (move) {
-        if (this->board_state.is_move_legal(*move)) {
-            this->board_state.apply_move(*move);
+    if (!this->board_state.is_whites_move()) {
+        const auto move = this->get_player_move();
+
+        if (move) {
+            if (this->board_state.is_move_legal(*move)) {
+                this->board_state.apply_move(*move);
+                this->mcts.apply_move(*move);
+            }
         }
+    } else {
+        const auto move = this->mcts.search(100'000);
+
+        this->board_state.apply_move(move);
+        mcts.apply_move(move);
     }
 }
 
@@ -282,7 +293,12 @@ void Game::update_camera() {
     this->camera.offset = window.GetSize() / 2;
 
     const auto window_size = window.GetSize();
-    this->camera.zoom = (window_size.x / 20.f);
+
+    if (window_size.x < window_size.y) {
+        this->camera.zoom = (window_size.x / 10.f);
+    } else {
+        this->camera.zoom = (window_size.y / 10.f);
+    }
 }
 
 HVec2 Game::get_mouse_hex_pos() {

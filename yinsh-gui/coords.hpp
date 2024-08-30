@@ -6,8 +6,6 @@
 #include <cstdint>
 #include <vector>
 
-const float SQRT_THREE = 1.73205080756887729353f;
-
 struct HVec2;
 struct HVec3;
 

@@ -3,7 +3,7 @@
 
 #include <yinsh-gui/board.hpp>
 
-#include <yngine/board_state.hpp>
+#include <yngine/mcts.hpp>
 
 #include <raylib-cpp.hpp>
 #include <optional>
@@ -40,6 +40,9 @@ private:
     std::optional<HVec2> row_remove_from;
     // Used to draw the line player selected
     HVec2 row_remove_to;
+
+    // @temp
+    Yngine::MCTS mcts;
 };
 
 #endif // YINSH_GUI_GAME_HPP
