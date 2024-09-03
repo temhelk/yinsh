@@ -4,8 +4,25 @@
 #include <yinsh-gui/utils.hpp>
 
 #include <raylib-cpp.hpp>
+#define RAYGUI_IMPLEMENTATION
+#include <raygui.h>
+
 #include <cassert>
 #include <algorithm>
+
+Game::Game()
+    : window{}
+    , camera{}
+    , state{Game::State::ChoosingMode}
+    , white_is_ai{false}
+    , black_is_ai{false}
+    , board_state{}
+    , selected_ring{}
+    , ring_moves{}
+    , row_remove_from{}
+    , row_remove_to{}
+    , engine{} {
+}
 
 void Game::run() {
     const auto initial_window_size = raylib::Vector2{1280, 720};
@@ -26,6 +43,8 @@ void Game::run() {
 
     SetTargetFPS(60);
 
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
+
     while (!this->window.ShouldClose()) {
         this->update();
 
@@ -34,23 +53,47 @@ void Game::run() {
 }
 
 void Game::update() {
-    if (this->board_state.get_next_action() == BoardState::NextAction::GameOver)
-        return;
+    switch (this->state) {
+    case State::ChoosingMode:
+    case State::ChoosingAISettings: {
+    } break;
+    case State::Playing: {
+        if (this->board_state.get_next_action() == BoardState::NextAction::GameOver)
+            return;
 
-    if (!this->board_state.is_whites_move()) {
-        const auto move = this->get_player_move();
+        if ( this->board_state.is_whites_move() && this->white_is_ai ||
+            !this->board_state.is_whites_move() && this->black_is_ai) {
+            assert(this->engine);
 
-        if (move) {
-            if (this->board_state.is_move_legal(*move)) {
-                this->board_state.apply_move(*move);
-                this->mcts.apply_move(*move);
+            if (!this->engine_move) {
+                this->engine_move = this->engine->search(this->ai_move_time);
+            } else {
+                const auto move_status = this->engine_move->wait_for(std::chrono::seconds(0));
+
+                if (move_status == std::future_status::ready) {
+                    const auto move = this->engine_move->get();
+
+                    this->board_state.apply_move(move);
+                    engine->apply_move(move);
+
+                    this->engine_move = std::nullopt;
+                }
+            }
+
+        } else {
+            const auto move = this->get_player_move();
+
+            if (move) {
+                if (this->board_state.is_move_legal(*move)) {
+                    this->board_state.apply_move(*move);
+
+                    if (this->engine) {
+                        this->engine->apply_move(*move);
+                    }
+                }
             }
         }
-    } else {
-        const auto move = this->mcts.search(100'000);
-
-        this->board_state.apply_move(move);
-        mcts.apply_move(move);
+    } break;
     }
 }
 
@@ -184,11 +227,80 @@ void Game::render() {
     BeginDrawing();
     this->window.ClearBackground(raylib::Color(0xB7B3AFFF));
 
-    this->camera.BeginMode();
+    const auto window_size = window.GetSize();
 
-    this->draw_board();
+    switch (this->state) {
+    case State::ChoosingMode: {
+        if (GuiButton(
+            Rectangle{window_size.x / 2 - 100, window_size.y / 2 - 50, 200, 40},
+            "Player vs Player"
+        )) {
+            this->white_is_ai = false;
+            this->black_is_ai = false;
+            this->state = Game::State::Playing;
+        }
 
-    this->camera.EndMode();
+        if (GuiButton(
+            Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 10, 200, 40},
+            "Player vs AI"
+        )) {
+            this->state = Game::State::ChoosingAISettings;
+        }
+    } break;
+    case State::ChoosingAISettings: {
+        static int color_selected = 0;
+        GuiToggleGroup(
+            Rectangle{window_size.x / 2 - 101, window_size.y / 2 - 60, 100, 30},
+            "White;Black",
+            &color_selected
+        );
+
+        static float move_time = 1;
+        GuiSlider(
+            Rectangle{window_size.x / 2, window_size.y / 2 - 20, 100, 30},
+            "Move time",
+            TextFormat("%.1fs", move_time),
+            &move_time,
+            1.f, 30.f
+        );
+
+        // @TODO: get system max memory, and set that to limit and default
+        static std::size_t memory_limit_mb = 1024;
+        float memory_limit_mb_float = memory_limit_mb;
+        GuiSlider(
+            Rectangle{window_size.x / 2, window_size.y / 2 + 20, 100, 30},
+            "Memory limit",
+            TextFormat("%i MB", memory_limit_mb),
+            &memory_limit_mb_float,
+            1.f, 8192.f
+        );
+        memory_limit_mb = static_cast<std::size_t>(memory_limit_mb_float);
+
+        if (GuiButton(
+            Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 60, 200, 30},
+            "Play"
+        )) {
+            if (color_selected == 0) {
+                this->white_is_ai = false;
+                this->black_is_ai = true;
+            } else {
+                this->white_is_ai = true;
+                this->black_is_ai = false;
+            }
+
+            this->ai_move_time = move_time;
+
+            this->engine.emplace(memory_limit_mb * 1024 * 1024);
+
+            this->state = Game::State::Playing;
+        }
+    } break;
+    case State::Playing: {
+        this->camera.BeginMode();
+        this->draw_board();
+        this->camera.EndMode();
+    } break;
+    }
 
     EndDrawing();
 }

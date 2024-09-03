@@ -10,13 +10,21 @@
 
 class Game {
 public:
-    Game() = default;
+    Game();
+    Game(Game &&) = delete;
+    Game &operator=(Game &&) = delete;
     Game(const Game &) = delete;
     Game &operator=(const Game &) = delete;
 
     void run();
 
 private:
+    enum class State {
+        ChoosingMode,
+        ChoosingAISettings,
+        Playing,
+    };
+
     void update();
     std::optional<Yngine::Move> get_player_move();
 
@@ -31,6 +39,11 @@ private:
     raylib::Window window;
     raylib::Camera2D camera;
 
+    State state;
+    bool white_is_ai;
+    bool black_is_ai;
+    float ai_move_time;
+
     BoardState board_state;
 
     std::optional<HVec2> selected_ring; // Ring that the player wants to move
@@ -41,8 +54,9 @@ private:
     // Used to draw the line player selected
     HVec2 row_remove_to;
 
-    // @temp
-    Yngine::MCTS mcts;
+    // Not null if we play against AI
+    std::optional<Yngine::MCTS> engine;
+    std::optional<std::future<Yngine::Move>> engine_move;
 };
 
 #endif // YINSH_GUI_GAME_HPP

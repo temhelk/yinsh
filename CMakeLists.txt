@@ -23,3 +23,6 @@ target_link_libraries(Yinsh-gui PRIVATE raylib)
 add_subdirectory(extern/raylib-cpp)
 target_link_libraries(Yinsh-gui PRIVATE raylib_cpp)
 
+add_library(raygui INTERFACE)
+target_include_directories(raygui INTERFACE extern/raygui/src)
+target_link_libraries(Yinsh-gui PRIVATE raygui)
