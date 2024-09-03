@@ -1,6 +1,7 @@
 #include <yinsh-gui/coords.hpp>
 
 #include <cmath>
+#include <numbers>
 
 const std::vector<HVec2> HVec2::Directions = {
     HVec2{1, 0}, HVec2{0, 1}, HVec2{-1, 1},
