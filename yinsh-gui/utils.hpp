@@ -17,7 +17,6 @@ inline Vec2 from_vector2(raylib::Vector2 vec) {
     return Vec2{vec.x, vec.y};
 }
 
-// @TODO: move these into HVec2 class
 inline HVec2 to_hvector2(Yngine::Vec2 vec) {
     return HVec2{vec.first, vec.second};
 }
