@@ -12,6 +12,11 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(EMSCRIPTEN)
+    add_compile_options(-pthread)
+    add_link_options(-sALLOW_MEMORY_GROWTH -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE_STRICT=0)
+endif()
+
 add_subdirectory(yinsh-gui)
 
 add_subdirectory(extern/yngine)

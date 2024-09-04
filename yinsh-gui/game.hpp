@@ -18,6 +18,8 @@ public:
 
     void run();
 
+    friend void update_draw_frame(void* game_voidptr);
+
 private:
     enum class State {
         ChoosingMode,

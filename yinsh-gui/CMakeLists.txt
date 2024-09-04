@@ -21,4 +21,13 @@ target_compile_definitions(
     $<$<CONFIG:Debug>:DEBUG>
 )
 
+if(EMSCRIPTEN)
+    set_target_properties(
+        Yinsh-gui PROPERTIES
+        SUFFIX .html
+    )
+
+    target_link_options(Yinsh-gui PRIVATE --shell-file ${PROJECT_SOURCE_DIR}/extern/raylib/src/minshell.html)
+endif()
+
 target_include_directories(Yinsh-gui PUBLIC ${PROJECT_SOURCE_DIR})

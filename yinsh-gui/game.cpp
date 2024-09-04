@@ -7,6 +7,10 @@
 #define RAYGUI_IMPLEMENTATION
 #include <raygui.h>
 
+#if defined(PLATFORM_WEB)
+    #include <emscripten/emscripten.h>
+#endif
+
 #include <cassert>
 #include <algorithm>
 
@@ -22,6 +26,13 @@ Game::Game()
     , row_remove_from{}
     , row_remove_to{}
     , engine{} {
+}
+
+void update_draw_frame(void* game_voidptr) {
+    auto game = static_cast<Game*>(game_voidptr);
+
+    game->update();
+    game->render();
 }
 
 void Game::run() {
@@ -41,15 +52,23 @@ void Game::run() {
     };
     this->update_camera();
 
-    SetTargetFPS(60);
-
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
+
+#if defined(PLATFORM_WEB)
+    emscripten_set_main_loop_arg(
+        update_draw_frame,
+        this,
+        0,
+        1
+    );
+#else
+    SetTargetFPS(60);
 
     while (!this->window.ShouldClose()) {
         this->update();
-
         this->render();
     }
+#endif
 }
 
 void Game::update() {
@@ -265,14 +284,14 @@ void Game::render() {
         );
 
         // @TODO: get system max memory, and set that to limit and default
-        static std::size_t memory_limit_mb = 1024;
+        static std::size_t memory_limit_mb = 1536;
         float memory_limit_mb_float = memory_limit_mb;
         GuiSlider(
             Rectangle{window_size.x / 2, window_size.y / 2 + 20, 100, 30},
             "Memory limit",
             TextFormat("%i MB", memory_limit_mb),
             &memory_limit_mb_float,
-            1.f, 8192.f
+            1.f, 1536.f
         );
         memory_limit_mb = static_cast<std::size_t>(memory_limit_mb_float);
 
