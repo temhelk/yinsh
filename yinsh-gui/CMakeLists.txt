@@ -24,7 +24,9 @@ target_compile_definitions(
     $<$<CONFIG:Debug>:DEBUG>
 )
 
-target_link_libraries(Yinsh-gui PRIVATE -static)
+if(WIN32)
+    target_link_libraries(Yinsh-gui PRIVATE -static-libgcc -static-libstdc++)
+endif()
 
 if(EMSCRIPTEN)
     set_target_properties(
