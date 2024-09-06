@@ -4,8 +4,11 @@ add_executable(
     game.cpp game.hpp
     board.cpp board.hpp
     coords.cpp coords.hpp
+    system.cpp system.hpp
     utils.hpp
 )
+
+# set_target_properties(Yinsh-gui PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
 
 target_compile_features(Yinsh-gui PUBLIC cxx_std_20)
 
@@ -20,6 +23,8 @@ target_compile_definitions(
     PRIVATE
     $<$<CONFIG:Debug>:DEBUG>
 )
+
+target_link_libraries(Yinsh-gui PRIVATE -static)
 
 if(EMSCRIPTEN)
     set_target_properties(

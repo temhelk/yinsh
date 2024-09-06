@@ -2,6 +2,7 @@
 #include <yinsh-gui/coords.hpp>
 #include <yinsh-gui/board.hpp>
 #include <yinsh-gui/utils.hpp>
+#include <yinsh-gui/system.hpp>
 
 #include <raylib-cpp.hpp>
 #define RAYGUI_IMPLEMENTATION
