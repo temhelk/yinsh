@@ -26,6 +26,7 @@ Game::Game()
     , row_remove_from{}
     , row_remove_to{}
     , engine{} {
+    this->total_system_memory = get_system_memory();
 }
 
 void update_draw_frame(void* game_voidptr) {
@@ -283,15 +284,24 @@ void Game::render() {
             1.f, 30.f
         );
 
-        // @TODO: get system max memory, and set that to limit and default
-        static std::size_t memory_limit_mb = 1536;
+        static std::size_t memory_limit_mb = 0;
+
+        const int total_system_memory_mb = this->total_system_memory / 1024 / 1024;
+        if (memory_limit_mb == 0) {
+            if (this->total_system_memory >= 2 * 1024) {
+                memory_limit_mb = 2048;
+            } else {
+                memory_limit_mb = memory_limit_mb;
+            }
+        }
+
         float memory_limit_mb_float = memory_limit_mb;
         GuiSlider(
             Rectangle{window_size.x / 2, window_size.y / 2 + 20, 100, 30},
             "Memory limit",
             TextFormat("%i MB", memory_limit_mb),
             &memory_limit_mb_float,
-            1.f, 1536.f
+            1.f, total_system_memory_mb
         );
         memory_limit_mb = static_cast<std::size_t>(memory_limit_mb_float);
 

@@ -59,6 +59,8 @@ private:
     // Not null if we play against AI
     std::optional<Yngine::MCTS> engine;
     std::optional<std::future<Yngine::Move>> engine_move;
+
+    std::size_t total_system_memory;
 };
 
 #endif // YINSH_GUI_GAME_HPP

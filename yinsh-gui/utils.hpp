@@ -6,6 +6,10 @@
 #include <yngine/common.hpp>
 #include <raylib-cpp.hpp>
 
+#ifdef __linux__
+#include <sys/sysinfo.h>
+#endif
+
 template<class... Ts>
 struct variant_overloaded : Ts... { using Ts::operator()...; };
 
@@ -24,5 +28,15 @@ inline HVec2 to_hvector2(Yngine::Vec2 vec) {
 inline Yngine::Vec2 from_hvector2(HVec2 vec) {
     return std::make_pair(vec.x, vec.y);
 }
+
+
+#ifdef __linux__
+inline std::size_t get_system_memory() {
+    struct sysinfo system_info;
+    sysinfo(&system_info);
+
+    return system_info.totalram;
+}
+#endif
 
 #endif // YINSH_GUI_UTILS_HPP
