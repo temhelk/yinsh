@@ -6,7 +6,7 @@
 	url = https://github.com/robloach/raylib-cpp
 [submodule "extern/yngine"]
 	path = extern/yngine
-	url = ./extern/yngine
+	url = https://github.com/temhelk/yngine
 [submodule "extern/raygui"]
 	path = extern/raygui
 	url = https://github.com/raysan5/raygui
