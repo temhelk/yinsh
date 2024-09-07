@@ -8,7 +8,7 @@ add_executable(
     utils.hpp
 )
 
-# set_target_properties(Yinsh-gui PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
+set_target_properties(Yinsh-gui PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
 
 target_compile_features(Yinsh-gui PUBLIC cxx_std_20)
 
