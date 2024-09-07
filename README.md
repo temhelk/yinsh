@@ -15,10 +15,17 @@ The project uses submodules to download dependencies so use recursive flag when 
 
 Linux (gcc, clang):
 - Install neccessary build tools like cmake, make and the compiler
-- Configure cmake with `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release`
-- Build the game with `cmake --build build-release --parallel`
+- Clone this repository `git clone --recursive https://github.com/temhelk/yinsh`
+- cd into it `cd yinsh`
+- Configure cmake `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release`
+- Build the game `cmake --build build-release --parallel`
 - The resulting binary should be available at `./build-release/yinsh-gui/Yinsh-gui`
 
 Windows (mingw64 or clang with MSYS2, msvc is not supported yet):
-- Install msys2 and packages for the appropriate environment like cmake, make (or ninja) and the compiler (@TODO: write this step-by-step)
-- @todo: complete this
+- Install msys2 and packages for the appropriate environment like cmake, make (or ninja) and the compiler
+- Example for CLANG64: `pacman -S git`; `pacman -S mingw-w64-clang-x86_64-cmake`; `pacman -S mingw-w64-clang-x86_64-clang`; `pacman -S mingw-w64-clang-x86_64-ninja`
+- Clone this repository `git clone --recursive https://github.com/temhelk/yinsh`
+- cd into it `cd yinsh`
+- Configure cmake `cmake -GNinja -S . -B build-release -DCMAKE_BUILD_TYPE=Release`
+- Build the game `cmake --build build-release --parallel`
+- The resulting binary should be available at `./build-release/yinsh-gui/Yinsh-gui.exe`
