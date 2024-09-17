@@ -87,7 +87,7 @@ void Game::update() {
             assert(this->engine);
 
             if (!this->engine_move) {
-                this->engine_move = this->engine->search(this->ai_move_time);
+                this->engine_move = this->engine->search(this->ai_move_time, this->engine_thread_count);
             } else {
                 const auto move_status = this->engine_move->wait_for(std::chrono::seconds(0));
 
@@ -304,8 +304,20 @@ void Game::render() {
         );
         memory_limit_mb = static_cast<std::size_t>(memory_limit_mb_float);
 
+        static std::size_t thread_count = 16;
+        float thread_count_float = thread_count;
+        GuiSlider(
+            Rectangle{window_size.x / 2, window_size.y / 2 + 60, 100, 30},
+            "Threads",
+            TextFormat("%i", thread_count),
+            &thread_count_float,
+            1.f, 16.f
+        );
+        thread_count = static_cast<std::size_t>(thread_count_float);
+        this->engine_thread_count = thread_count;
+
         if (GuiButton(
-            Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 60, 200, 30},
+            Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 100, 200, 30},
             "Play"
         )) {
             if (color_selected == 0) {
