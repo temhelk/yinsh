@@ -28,6 +28,7 @@ Game::Game()
     , row_remove_to{}
     , engine{} {
     this->total_system_memory = get_system_memory();
+    this->system_max_threads = get_system_threads();
 }
 
 void update_draw_frame(void* game_voidptr) {
@@ -304,14 +305,14 @@ void Game::render() {
         );
         memory_limit_mb = static_cast<std::size_t>(memory_limit_mb_float);
 
-        static std::size_t thread_count = 16;
+        static std::size_t thread_count = this->system_max_threads;
         float thread_count_float = thread_count;
         GuiSlider(
             Rectangle{window_size.x / 2, window_size.y / 2 + 60, 100, 30},
             "Threads",
             TextFormat("%i", thread_count),
             &thread_count_float,
-            1.f, 16.f
+            1.f, this->system_max_threads
         );
         thread_count = static_cast<std::size_t>(thread_count_float);
         this->engine_thread_count = thread_count;

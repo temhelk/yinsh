@@ -21,3 +21,15 @@ std::size_t get_system_memory() {
 }
 #endif
 
+#if defined(__linux__)
+int get_system_threads() {
+    return get_nprocs();
+}
+#elif defined(_WIN32)
+int get_system_threads() {
+    SYSTEM_INFO system_info;
+    GetSystemInfo(&system_info);
+
+    return system_info.dwNumberOfProcessors;
+}
+#endif

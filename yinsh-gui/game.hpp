@@ -62,6 +62,7 @@ private:
     int engine_thread_count;
 
     std::size_t total_system_memory;
+    int system_max_threads;
 };
 
 #endif // YINSH_GUI_GAME_HPP
