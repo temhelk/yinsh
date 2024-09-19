@@ -8,7 +8,7 @@
 #define RAYGUI_IMPLEMENTATION
 #include <raygui.h>
 
-#if defined(PLATFORM_WEB)
+#if defined(EMSCRIPTEN)
     #include <emscripten/emscripten.h>
 #endif
 
@@ -57,7 +57,7 @@ void Game::run() {
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
 
-#if defined(PLATFORM_WEB)
+#if defined(EMSCRIPTEN)
     emscripten_set_main_loop_arg(
         update_draw_frame,
         this,
