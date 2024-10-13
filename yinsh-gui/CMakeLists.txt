@@ -11,6 +11,7 @@ add_executable(
 set_target_properties(Yinsh-gui PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
 
 target_compile_features(Yinsh-gui PUBLIC cxx_std_20)
+target_include_directories(Yinsh-gui PUBLIC ${PROJECT_SOURCE_DIR})
 
 set_target_properties(
     Yinsh-gui PROPERTIES
@@ -36,5 +37,3 @@ if(EMSCRIPTEN)
 
     target_link_options(Yinsh-gui PRIVATE --shell-file ${PROJECT_SOURCE_DIR}/extern/raylib/src/minshell.html)
 endif()
-
-target_include_directories(Yinsh-gui PUBLIC ${PROJECT_SOURCE_DIR})
