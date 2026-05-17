@@ -332,7 +332,7 @@ void Game::render() {
 
             this->ai_move_time = move_time;
 
-            this->engine.emplace(memory_limit_mb * 1024 * 1024);
+            this->engine.emplace(true, memory_limit_mb * 1024 * 1024);
 
             this->state = Game::State::Playing;
         }
