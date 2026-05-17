@@ -148,18 +148,19 @@ std::optional<Yngine::Move> Game::get_player_move() {
                         clicked_pos) != this->ring_moves.end();
 
                 if (clicked_on_possible_move_node) {
+                    auto selected_ring_copy = this->selected_ring;
                     this->selected_ring = std::nullopt;
 
                     return Yngine::RingMove{
                         Yngine::Bitboard::coords_to_index(
-                            (*this->selected_ring).x,
-                            (*this->selected_ring).y
+                            (*selected_ring_copy).x,
+                            (*selected_ring_copy).y
                         ),
                         Yngine::Bitboard::coords_to_index(
                             clicked_pos.x,
                             clicked_pos.y
                         ),
-                        HVec3{*this->selected_ring}.direction_to(clicked_pos)
+                        HVec3{*selected_ring_copy}.direction_to(clicked_pos)
                     };
                 }
             }
