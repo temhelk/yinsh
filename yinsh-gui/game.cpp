@@ -15,7 +15,6 @@
 #include <cassert>
 #include <algorithm>
 #include <chrono>
-#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -115,11 +114,17 @@ void Game::update() {
         if (this->board_state.get_next_action() == BoardState::NextAction::GameOver) {
             // Auto-save once when the game ends
             if (!this->auto_saved) {
-                const auto now = std::chrono::system_clock::now();
-                const std::time_t t = std::chrono::system_clock::to_time_t(now);
-                char buf[32];
-                std::strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", std::localtime(&t));
-                this->save_game(std::string(buf) + ".txt");
+                const auto now = std::chrono::floor<std::chrono::seconds>(
+                    std::chrono::system_clock::now()
+                );
+                const auto local_time = std::chrono::zoned_time{
+                    std::chrono::current_zone(), now
+                };
+                std::string file_name = std::format(
+                    "{:%Y%m%d_%H%M%S}.txt",
+                    local_time
+                );
+                this->save_game(file_name);
                 this->auto_saved = true;
             }
             return;
@@ -199,11 +204,17 @@ void Game::save_game(const std::string& path) {
     if (!f) return;
 
     // Timestamp header
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t t = std::chrono::system_clock::to_time_t(now);
-    char buf[32];
-    std::strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", std::localtime(&t));
-    f << "# DATE " << buf << "\n";
+    const auto now = std::chrono::floor<std::chrono::seconds>(
+        std::chrono::system_clock::now()
+    );
+    const auto local_time = std::chrono::zoned_time{
+        std::chrono::current_zone(), now
+    };
+    std::string time_string = std::format(
+        "{:%Y%m%d_%H%M%S}",
+        local_time
+    );
+    f << "# DATE " << time_string << "\n";
 
     // Player colour (human side); for PvP both sides are human
     if (!this->white_is_ai && !this->black_is_ai) {
@@ -861,11 +872,17 @@ void Game::draw_review_bar() {
     const float save_y = rl_y + btn_h + row_gap;
     if (this->move_history.empty()) GuiSetState(STATE_DISABLED);
     if (GuiButton(Rectangle{save_x, save_y, save_w, btn_h}, "Save") && !this->move_history.empty()) {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t t = std::chrono::system_clock::to_time_t(now);
-        char buf[32];
-        std::strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", std::localtime(&t));
-        this->save_game(std::string(buf) + ".txt");
+        const auto now = std::chrono::floor<std::chrono::seconds>(
+            std::chrono::system_clock::now()
+        );
+        const auto local_time = std::chrono::zoned_time{
+            std::chrono::current_zone(), now
+        };
+        std::string file_name = std::format(
+            "{:%Y%m%d_%H%M%S}.txt",
+            local_time
+        );
+        this->save_game(file_name);
     }
     GuiSetState(STATE_NORMAL);
 
