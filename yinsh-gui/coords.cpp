@@ -127,12 +127,24 @@ bool HVec3::operator==(const HVec3 rhs) const {
         this->z == rhs.z;
 }
 
+HVec3 HVec3::operator+(const HVec3 rhs) const {
+    return HVec3{
+        this->x + rhs.x,
+        this->y + rhs.y,
+        this->z + rhs.z
+    };
+}
+
 HVec3 HVec3::operator-(const HVec3 rhs) const {
     return HVec3{
         this->x - rhs.x,
         this->y - rhs.y,
         this->z - rhs.z
     };
+}
+
+HVec3 HVec3::operator*(const int32_t rhs) const {
+    return HVec3{this->x * rhs, this->y * rhs, this->z * rhs};
 }
 
 HVec3 HVec3::operator/(const int32_t rhs) const {

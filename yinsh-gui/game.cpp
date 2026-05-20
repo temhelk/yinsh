@@ -267,44 +267,52 @@ void Game::save_game(const std::string& path) {
 
 // Parse "Letter+Number" notation (e.g. "E4") into a board index.
 // Returns false if the string is malformed or out of range.
-static bool notation_to_index(const std::string& s, uint8_t& out_index) {
-    if (s.size() < 2) return false;
+static std::optional<uint8_t> notation_to_index(const std::string& s) {
+    if (s.size() < 2)
+        return std::nullopt;
+
     const char letter = s[0];
-    if (letter < 'A' || letter > 'K') return false;
+
+    if (letter < 'A' || letter > 'K')
+        return std::nullopt;
+
     int number = 0;
-    for (std::size_t i = 1; i < s.size(); i++) {
-        if (s[i] < '0' || s[i] > '9') return false;
-        number = number * 10 + (s[i] - '0');
-    }
-    if (number < 1 || number > 11) return false;
+    std::from_chars(s.data() + 1, s.data() + s.size(), number, 10);
+    if (number < 1 || number > 11)
+        return std::nullopt;
+
     const int letter_index = letter - 'A';
     const int y = number - 1;
     const int x = (letter_index + 5) - y;
-    if (x < 0 || x > 10 || y < 0 || y > 10) return false;
-    if (!Yngine::Bitboard::are_coords_in_game(x, y)) return false;
-    out_index = Yngine::Bitboard::coords_to_index(x, y);
-    return true;
+
+    if (x < 0 || x > 10 || y < 0 || y > 10)
+        return std::nullopt;
+
+    if (!Yngine::Bitboard::are_coords_in_game(x, y))
+        return std::nullopt;
+
+    return Yngine::Bitboard::coords_to_index(x, y);
 }
 
 // Derive direction from two board indices (must be on a straight line).
-static bool indices_to_direction(uint8_t from_idx, uint8_t to_idx, Yngine::Direction& out_dir) {
-    const auto fc = Yngine::Bitboard::index_to_coords(from_idx);
-    const auto tc = Yngine::Bitboard::index_to_coords(to_idx);
-    const int dx = static_cast<int>(tc.first)  - static_cast<int>(fc.first);
-    const int dy = static_cast<int>(tc.second) - static_cast<int>(fc.second);
-    if (dx == 0 && dy == 0) return false;
-    // Normalise to unit step
-    const int len = std::max(std::abs(dx), std::abs(dy));
-    if (dx % len != 0 || dy % len != 0) return false;
-    const int ux = dx / len, uy = dy / len;
-    for (int d = 0; d < 6; d++) {
-        const auto& v = Yngine::direction_to_vec2[d];
-        if (v.first == ux && v.second == uy) {
-            out_dir = static_cast<Yngine::Direction>(d);
-            return true;
-        }
-    }
-    return false;
+static std::optional<Yngine::Direction> indices_to_direction(uint8_t from_idx, uint8_t to_idx) {
+    const auto from = Yngine::Bitboard::index_to_coords(from_idx);
+    const auto to = Yngine::Bitboard::index_to_coords(to_idx);
+
+    const auto from_3 = HVec3{HVec2{from.first, from.second}};
+    const auto to_3 = HVec3{HVec2{to.first, to.second}};
+
+    if (from_3 == to_3)
+        return std::nullopt;
+
+    const auto dir = from_3.direction_to(to_3);
+
+    // Check if they're on the same line by trying to compute 'to' backwards
+    const auto length = (to_3 - from_3).length();
+    if ((from_3 + HVec3{HVec2::from_direction(dir)} * length) != to_3)
+        return std::nullopt;
+
+    return from_3.direction_to(to_3);
 }
 
 bool Game::load_game(const std::string& path) {
@@ -338,30 +346,36 @@ bool Game::load_game(const std::string& path) {
         bool parsed = false;
 
         if (tokens[0] == "PLACE" && tokens.size() == 2) {
-            uint8_t idx;
-            if (!notation_to_index(tokens[1], idx)) goto parse_error;
-            move = Yngine::PlaceRingMove{idx};
+            const auto idx = notation_to_index(tokens[1]);
+            if (!idx) goto parse_error;
+
+            move = Yngine::PlaceRingMove{*idx};
             parsed = true;
         } else if (tokens[0] == "MOVE" && tokens.size() == 3) {
-            uint8_t from_idx, to_idx;
-            if (!notation_to_index(tokens[1], from_idx)) goto parse_error;
-            if (!notation_to_index(tokens[2], to_idx))   goto parse_error;
-            Yngine::Direction dir;
-            if (!indices_to_direction(from_idx, to_idx, dir)) goto parse_error;
-            move = Yngine::RingMove{from_idx, to_idx, dir};
+            const auto from_idx = notation_to_index(tokens[1]);
+            const auto to_idx = notation_to_index(tokens[2]);
+            if (!from_idx || !to_idx) goto parse_error;
+
+            const auto dir = indices_to_direction(*from_idx, *to_idx);
+            if (!dir) goto parse_error;
+
+            move = Yngine::RingMove{*from_idx, *to_idx, *dir};
             parsed = true;
         } else if (tokens[0] == "REMOVE_ROW" && tokens.size() == 3) {
-            uint8_t from_idx, to_idx;
-            if (!notation_to_index(tokens[1], from_idx)) goto parse_error;
-            if (!notation_to_index(tokens[2], to_idx))   goto parse_error;
-            Yngine::Direction dir;
-            if (!indices_to_direction(from_idx, to_idx, dir)) goto parse_error;
-            move = Yngine::RemoveRowMove{from_idx, dir};
+            const auto from_idx = notation_to_index(tokens[1]);
+            const auto to_idx = notation_to_index(tokens[2]);
+            if (!from_idx || !to_idx) goto parse_error;
+
+            const auto dir = indices_to_direction(*from_idx, *to_idx);
+            if (!dir) goto parse_error;
+
+            move = Yngine::RemoveRowMove{*from_idx, *dir};
             parsed = true;
         } else if (tokens[0] == "REMOVE_RING" && tokens.size() == 2) {
-            uint8_t idx;
-            if (!notation_to_index(tokens[1], idx)) goto parse_error;
-            move = Yngine::RemoveRingMove{idx};
+            const auto idx = notation_to_index(tokens[1]);
+            if (!idx) goto parse_error;
+
+            move = Yngine::RemoveRingMove{*idx};
             parsed = true;
         } else {
             std::cerr << "load_game: unknown token '" << tokens[0] << "' at line " << line_num << "\n";
