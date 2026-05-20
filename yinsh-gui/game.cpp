@@ -228,23 +228,17 @@ void Game::save_game(const std::string& path) {
     if (!game_over) {
         f << "# RESULT Unfinished\n";
     } else {
-        int white_rings = 0, black_rings = 0;
-        for (int32_t x = 0; x < 11; x++) {
-            for (int32_t y = 0; y < 11; y++) {
-                const auto pos = HVec2{x, y};
-                if (!this->board_state.is_in_game(pos)) continue;
-                const auto node = this->board_state.get_at(pos);
-                if (node == Node::WhiteRing) white_rings++;
-                else if (node == Node::BlackRing) black_rings++;
-            }
-        }
-        // Winner removed their last ring (now has 2); loser still has >= 3
-        if (white_rings < black_rings)
+        switch (this->board_state.game_result()) {
+        case Yngine::GameResult::WhiteWon: {
             f << "# RESULT White\n";
-        else if (black_rings < white_rings)
+        } break;
+        case Yngine::GameResult::BlackWon: {
             f << "# RESULT Black\n";
-        else
+        } break;
+        case Yngine::GameResult::Draw: {
             f << "# RESULT Draw\n";
+        } break;
+        }
     }
 
     // Serialise each move

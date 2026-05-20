@@ -61,6 +61,9 @@ public:
     Node get_at(HVec2 pos) const;
     bool is_whites_move() const;
 
+    // Should be called when get_next_action() returns GameOver
+    Yngine::GameResult game_result() const;
+
     bool ring_moves_available() const;
 
     bool is_move_legal(Yngine::Move move) const;

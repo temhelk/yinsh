@@ -123,6 +123,16 @@ bool BoardState::is_whites_move() const {
     return this->white_moves_next;
 }
 
+Yngine::GameResult BoardState::game_result() const {
+    // Winner removed their last ring (now has 2); loser still has >= 3
+    if (this->white_rings_on_board < this->black_rings_on_board)
+        return Yngine::GameResult::WhiteWon;
+    else if (this->black_rings_on_board < this->white_rings_on_board)
+        return Yngine::GameResult::BlackWon;
+    else
+        return Yngine::GameResult::Draw;
+}
+
 bool BoardState::ring_moves_available() const {
     const auto correct_ring = this->white_moves_next ?
         Node::WhiteRing : Node::BlackRing;
