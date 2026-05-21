@@ -54,6 +54,8 @@ struct HVec3 {
 
     bool operator==(const HVec3 rhs) const;
     HVec3 operator-(const HVec3 rhs) const;
+    HVec3 operator+(const HVec3 rhs) const;
+    HVec3 operator*(const int32_t rhs) const;
     HVec3 operator/(const int32_t rhs) const;
     HVec3& operator/=(const int32_t rhs);
 

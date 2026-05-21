@@ -123,6 +123,16 @@ bool BoardState::is_whites_move() const {
     return this->white_moves_next;
 }
 
+Yngine::GameResult BoardState::game_result() const {
+    // Winner removed their last ring (now has 2); loser still has >= 3
+    if (this->white_rings_on_board < this->black_rings_on_board)
+        return Yngine::GameResult::WhiteWon;
+    else if (this->black_rings_on_board < this->white_rings_on_board)
+        return Yngine::GameResult::BlackWon;
+    else
+        return Yngine::GameResult::Draw;
+}
+
 bool BoardState::ring_moves_available() const {
     const auto correct_ring = this->white_moves_next ?
         Node::WhiteRing : Node::BlackRing;
@@ -413,10 +423,14 @@ void BoardState::remove_ring(HVec2 pos) {
         this->black_rings_on_board--;
     }
 
-    if (this->white_rings_on_board == 2 ||
-        this->black_rings_on_board == 2) {
+    if (this->white_rings_on_board == this->win_rings_remaining ||
+        this->black_rings_on_board == this->win_rings_remaining) {
         this->next_action = NextAction::GameOver;
     } else {
         check_for_rows_and_change_state(this->last_move_from, this->last_move_to);
     }
+}
+
+void BoardState::set_mode(int win_rings_remaining) {
+    this->win_rings_remaining = win_rings_remaining;
 }

@@ -61,10 +61,18 @@ public:
     Node get_at(HVec2 pos) const;
     bool is_whites_move() const;
 
+    // Should be called when get_next_action() returns GameOver
+    Yngine::GameResult game_result() const;
+
     bool ring_moves_available() const;
 
     bool is_move_legal(Yngine::Move move) const;
     void apply_move(Yngine::Move move);
+
+    // Configure game mode before play begins.
+    // win_rings_remaining: rings left on board that trigger a win (default 2,
+    //   meaning 3 rows removed; blitz uses 4 = 1 row removed).
+    void set_mode(int win_rings_remaining);
 
     std::vector<HVec2> get_ring_moves(HVec2 pos) const;
 
@@ -89,6 +97,8 @@ private:
 
     int white_rings_on_board = 0;
     int black_rings_on_board = 0;
+
+    int win_rings_remaining = 2;
 
     HVec2 last_move_from;
     HVec2 last_move_to;

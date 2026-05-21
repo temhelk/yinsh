@@ -26,7 +26,7 @@ target_compile_definitions(
 )
 
 if(WIN32)
-    target_link_libraries(Yinsh-gui PRIVATE -static-libgcc -static-libstdc++)
+    target_link_libraries(Yinsh-gui PRIVATE -static -static-libgcc -static-libstdc++)
 endif()
 
 if(EMSCRIPTEN)
