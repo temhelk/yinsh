@@ -21,6 +21,23 @@
 #include <sstream>
 #include <string>
 
+static std::tm localtime_safe(std::time_t timer)
+{
+    std::tm result{};
+
+#if defined(__unix__)
+    localtime_r(&timer, &result);
+#elif defined(_WIN32) || defined(_MSC_VER)
+    localtime_s(&bt, &timer);
+#else
+    static std::mutex m;
+    std::lock_guard<std::mutex> lock(m);
+    bt = *std::localtime(&timer);
+#endif
+
+    return result;
+}
+
 static std::string get_local_time_string() {
     const auto now = std::chrono::floor<std::chrono::seconds>(
         std::chrono::system_clock::now()
@@ -28,8 +45,7 @@ static std::string get_local_time_string() {
 
     const auto now_time_t = std::chrono::system_clock::to_time_t(now);
 
-    std::tm local_time;
-    localtime_s(&local_time, &now_time_t);
+    std::tm local_time = localtime_safe(now_time_t);
 
     std::string file_name = std::format(
         "{:04}{:02}{:02}_{:02}{:02}{:02}",
@@ -219,7 +235,6 @@ static std::string row_end_notation(uint8_t from, Yngine::Direction dir) {
 }
 
 void Game::save_game(const std::string& path) {
-    std::cerr << path << std::endl;
     std::ofstream f(path);
     if (!f) {
         std::cerr << "Failed to save the game" << std::endl;
