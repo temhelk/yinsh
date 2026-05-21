@@ -15,10 +15,34 @@
 #include <cassert>
 #include <algorithm>
 #include <chrono>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
+
+static std::string get_local_time_string() {
+    const auto now = std::chrono::floor<std::chrono::seconds>(
+        std::chrono::system_clock::now()
+    );
+
+    const auto now_time_t = std::chrono::system_clock::to_time_t(now);
+
+    std::tm local_time;
+    localtime_s(&local_time, &now_time_t);
+
+    std::string file_name = std::format(
+        "{:04}{:02}{:02}_{:02}{:02}{:02}",
+        local_time.tm_year + 1900,
+        local_time.tm_mon + 1,
+        local_time.tm_mday,
+        local_time.tm_hour,
+        local_time.tm_min,
+        local_time.tm_sec
+    );
+
+    return file_name;
+}
 
 Game::Game()
     : window{}
@@ -114,15 +138,10 @@ void Game::update() {
         if (this->board_state.get_next_action() == BoardState::NextAction::GameOver) {
             // Auto-save once when the game ends
             if (!this->auto_saved) {
-                const auto now = std::chrono::floor<std::chrono::seconds>(
-                    std::chrono::system_clock::now()
-                );
-                const auto local_time = std::chrono::zoned_time{
-                    std::chrono::current_zone(), now
-                };
+                const auto time_str = get_local_time_string();
                 std::string file_name = std::format(
-                    "{:%Y%m%d_%H%M%S}.txt",
-                    local_time
+                    "{}.txt",
+                    time_str
                 );
                 this->save_game(file_name);
                 this->auto_saved = true;
@@ -200,21 +219,16 @@ static std::string row_end_notation(uint8_t from, Yngine::Direction dir) {
 }
 
 void Game::save_game(const std::string& path) {
+    std::cerr << path << std::endl;
     std::ofstream f(path);
-    if (!f) return;
+    if (!f) {
+        std::cerr << "Failed to save the game" << std::endl;
+        return;
+    }
 
     // Timestamp header
-    const auto now = std::chrono::floor<std::chrono::seconds>(
-        std::chrono::system_clock::now()
-    );
-    const auto local_time = std::chrono::zoned_time{
-        std::chrono::current_zone(), now
-    };
-    std::string time_string = std::format(
-        "{:%Y%m%d_%H%M%S}",
-        local_time
-    );
-    f << "# DATE " << time_string << "\n";
+    const auto time_str = get_local_time_string();
+    f << "# DATE " << time_str << "\n";
 
     // Player colour (human side); for PvP both sides are human
     if (!this->white_is_ai && !this->black_is_ai) {
@@ -880,15 +894,10 @@ void Game::draw_review_bar() {
     const float save_y = rl_y + btn_h + row_gap;
     if (this->move_history.empty()) GuiSetState(STATE_DISABLED);
     if (GuiButton(Rectangle{save_x, save_y, save_w, btn_h}, "Save") && !this->move_history.empty()) {
-        const auto now = std::chrono::floor<std::chrono::seconds>(
-            std::chrono::system_clock::now()
-        );
-        const auto local_time = std::chrono::zoned_time{
-            std::chrono::current_zone(), now
-        };
+        const auto time_str = get_local_time_string();
         std::string file_name = std::format(
-            "{:%Y%m%d_%H%M%S}.txt",
-            local_time
+            "{}.txt",
+            time_str
         );
         this->save_game(file_name);
     }
