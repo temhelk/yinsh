@@ -32,7 +32,7 @@ static std::tm localtime_safe(std::time_t timer)
 #if defined(__unix__)
     localtime_r(&timer, &result);
 #elif defined(_WIN32) || defined(_MSC_VER)
-    localtime_s(&bt, &timer);
+    localtime_s(&result, &timer);
 #else
     static std::mutex m;
     std::lock_guard<std::mutex> lock(m);
@@ -668,10 +668,11 @@ void Game::render() {
             auto app_dir_path = GetApplicationDirectory();
             auto app_dir_path_native = std::filesystem::path(std::string(app_dir_path)).c_str();
 
-            static NFD::UniquePathN open_path;
-            if (NFD::OpenDialog(open_path, nullptr, 0, app_dir_path_native) == NFD_OKAY) {
+            static NFD::UniquePathN open_path_selection;
+            if (NFD::OpenDialog(open_path_selection, nullptr, 0, app_dir_path_native) == NFD_OKAY) {
+                std::filesystem::path open_path{open_path_selection.get()};
                 std::cout << "Loading game: " << open_path << std::endl;
-                this->load_game(std::filesystem::path(open_path.get()));
+                this->load_game(open_path);
             }
         }
 
