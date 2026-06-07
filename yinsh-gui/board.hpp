@@ -69,9 +69,9 @@ public:
     bool is_move_legal(Yngine::Move move) const;
     void apply_move(Yngine::Move move);
 
-    void set_blitz_mode(bool state);
-
     std::vector<HVec2> get_ring_moves(HVec2 pos) const;
+
+    bool is_blitz = false;
 
 private:
     void place_ring(HVec2 pos);
@@ -94,8 +94,6 @@ private:
 
     int white_rings_on_board = 0;
     int black_rings_on_board = 0;
-
-    bool is_blitz = false;
 
     HVec2 last_move_from;
     HVec2 last_move_to;

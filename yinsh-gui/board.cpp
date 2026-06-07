@@ -432,7 +432,3 @@ void BoardState::remove_ring(HVec2 pos) {
         check_for_rows_and_change_state(this->last_move_from, this->last_move_to);
     }
 }
-
-void BoardState::set_blitz_mode(bool state) {
-    this->is_blitz = state;
-}

@@ -5,11 +5,11 @@
 #include <yinsh-gui/system.hpp>
 
 #include <raylib-cpp.hpp>
-#define RAYGUI_IMPLEMENTATION
-#include <raygui.h>
 
 #include <rlImGui.h>
 #include <imgui.h>
+
+#include <nfd.hpp>
 
 #if defined(EMSCRIPTEN)
     #include <emscripten/emscripten.h>
@@ -23,6 +23,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <filesystem>
 
 static std::tm localtime_safe(std::time_t timer)
 {
@@ -125,10 +126,10 @@ void Game::run() {
     };
     this->update_camera();
 
-    GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
-
     rlImGuiSetup(true);
     IMGUI_CHECKVERSION();
+
+    NFD::Init();
 
 #if defined(EMSCRIPTEN)
     emscripten_set_main_loop_arg(
@@ -147,6 +148,7 @@ void Game::run() {
 #endif
 
     std::cout << "Shutting down" << std::endl;
+    NFD::Quit();
     rlImGuiShutdown();
 }
 
@@ -352,7 +354,7 @@ static std::optional<Yngine::Direction> indices_to_direction(uint8_t from_idx, u
     return from_3.direction_to(to_3);
 }
 
-bool Game::load_game(const std::string& path) {
+bool Game::load_game(const std::filesystem::path& path) {
     std::ifstream f(path);
     if (!f) {
         std::cerr << "load_game: cannot open '" << path << "'\n";
@@ -445,6 +447,7 @@ parse_error:
     this->ring_moves.clear();
     this->row_remove_from = std::nullopt;
     this->rebuild_replay_board();
+    this->review_only = true;
     this->state = State::Reviewing;
     return true;
 }
@@ -463,6 +466,7 @@ void Game::reset_game() {
     this->white_is_ai     = false;
     this->black_is_ai     = false;
     this->place_ai_rings  = false;
+    this->review_only     = false;
     this->state           = State::ChoosingMode;
 }
 
@@ -593,143 +597,140 @@ void Game::render() {
     }
 
     BeginDrawing();
+    rlImGuiBegin();
+
     this->window.ClearBackground(raylib::Color(0xB7B3AFFF));
 
     const auto window_size = window.GetSize();
 
     switch (this->state) {
     case State::ChoosingMode: {
-        static bool pvp_blitz_checked = false;
+        static bool blitz_selection = false;
 
-        if (GuiButton(
-            Rectangle{window_size.x / 2 - 100, window_size.y / 2 - 70, 200, 40},
-            "Player vs Player"
-        )) {
-            this->white_is_ai = false;
-            this->black_is_ai = false;
-            this->board_state.set_blitz_mode(pvp_blitz_checked);
-            this->state = Game::State::Playing;
-        }
+        ImGuiViewport* vp = ImGui::GetMainViewport();
 
-        GuiCheckBox(
-            Rectangle{window_size.x / 2 - 100, window_size.y / 2 - 20, 20, 20},
-            "Blitz mode (1 row to win)",
-            &pvp_blitz_checked
+        ImGui::SetNextWindowPos(
+            vp->GetCenter(),
+            ImGuiCond_Always,
+            ImVec2(0.5f, 0.5f)
         );
 
-        if (GuiButton(
-            Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 10, 200, 40},
-            "Player vs AI"
-        )) {
+        ImGui::SetNextWindowSizeConstraints(
+            ImVec2(std::min(300.f, vp->WorkSize.x), 0.f),
+            ImVec2(FLT_MAX, FLT_MAX)
+        );
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_AlwaysAutoResize;
+
+        ImGui::Begin("Game settings", nullptr, flags);
+
+        if (ImGui::Button("Player vs AI", ImVec2(-FLT_MIN, 0.0f))) {
             this->state = Game::State::ChoosingAISettings;
         }
 
-        static bool  show_load_input = false;
-        static char  load_path[512]  = "";
-        static bool  load_error      = false;
+        if (ImGui::Button("Player vs Player", ImVec2(-FLT_MIN, 0.0f))) {
+            this->white_is_ai = false;
+            this->black_is_ai = false;
 
-        if (!show_load_input) {
-            if (GuiButton(
-                Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 60, 200, 30},
-                "Load Game"
-            )) {
-                show_load_input = true;
-                load_error = false;
-                load_path[0] = '\0';
-            }
-        } else {
-            const float box_y = window_size.y / 2 + 60;
-            GuiTextBox(
-                Rectangle{window_size.x / 2 - 150, box_y, 260, 30},
-                load_path, sizeof(load_path), true
-            );
-            if (GuiButton(Rectangle{window_size.x / 2 + 120, box_y, 60, 30}, "Load")) {
-                if (this->load_game(std::string(load_path))) {
-                    show_load_input = false;
-                    load_error = false;
-                } else {
-                    load_error = true;
-                }
-            }
-            if (GuiButton(Rectangle{window_size.x / 2 + 190, box_y, 60, 30}, "Cancel")) {
-                show_load_input = false;
-                load_error = false;
-            }
-            if (load_error) {
-                DrawText("Failed to load file.", static_cast<int>(window_size.x / 2 - 100),
-                         static_cast<int>(box_y + 36), 16, RED);
+            this->board_state.is_blitz = blitz_selection;
+            this->state = Game::State::Playing;
+        }
+        ImGui::NewLine();
+
+        bool blitz_selection_copy = blitz_selection;
+        if (blitz_selection_copy) {
+            ImGui::PushStyleColor(ImGuiCol_Button,
+                ImVec4(0.447f, 0.161f, 0.161f, 1.f));
+
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                ImVec4(0.978f, 0.276f, 0.276f, 1.f));
+        }
+
+        const char* current_mode_string = blitz_selection ? "Blitz" : "Classical";
+        if (ImGui::Button(current_mode_string, ImVec2(-FLT_MIN, 0.0f))) {
+            blitz_selection = !blitz_selection;
+        }
+
+        if (blitz_selection_copy) {
+            ImGui::PopStyleColor(2);
+        }
+
+        ImGui::NewLine();
+
+        if (ImGui::Button("Load game", ImVec2(-FLT_MIN, 0.0f))) {
+            auto app_dir_path = GetApplicationDirectory();
+            auto app_dir_path_native = std::filesystem::path(std::string(app_dir_path)).c_str();
+
+            static NFD::UniquePathN open_path;
+            if (NFD::OpenDialog(open_path, nullptr, 0, app_dir_path_native) == NFD_OKAY) {
+                std::cout << "Loading game: " << open_path << std::endl;
+                this->load_game(std::filesystem::path(open_path.get()));
             }
         }
+
+        ImGui::End();
     } break;
     case State::ChoosingAISettings: {
-        static int color_selected = 0;
-        GuiToggleGroup(
-            Rectangle{window_size.x / 2 - 101, window_size.y / 2 - 60, 100, 30},
-            "White;Black",
-            &color_selected
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+
+        ImGui::SetNextWindowPos(
+            vp->GetCenter(),
+            ImGuiCond_Always,
+            ImVec2(0.5f, 0.5f)
         );
 
-        static float move_time = 1;
-        GuiSlider(
-            Rectangle{window_size.x / 2, window_size.y / 2 - 20, 100, 30},
-            "Move time",
-            TextFormat("%.1fs", move_time),
-            &move_time,
-            1.f, 30.f
+        ImGui::SetNextWindowSizeConstraints(
+            ImVec2(std::min(300.f, vp->WorkSize.x), 0.f),
+            ImVec2(FLT_MAX, FLT_MAX)
         );
 
-        static std::size_t memory_limit_mb = 0;
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_AlwaysAutoResize;
 
-        const int total_system_memory_mb = this->total_system_memory / 1024 / 1024;
-        if (memory_limit_mb == 0) {
-            if (this->total_system_memory >= 2 * 1024) {
-                memory_limit_mb = 2048;
-            } else {
-                memory_limit_mb = memory_limit_mb;
-            }
+        ImGui::Begin("AI settings", nullptr, flags);
+
+        static bool white_selection = 1;
+
+        ImGui::Text("Player color:"); ImGui::SameLine();
+
+        const char* current_mode_string = white_selection ? "White" : "Black";
+        if (ImGui::Button(current_mode_string, ImVec2(-FLT_MIN, 0.0f))) {
+            white_selection = !white_selection;
         }
 
+        static float move_time = 1;
+        ImGui::SliderFloat("Move time", &move_time, 1.f, 30.f, "%.1f");
+
+        const int total_system_memory_mb = this->total_system_memory / 1024 / 1024;
+        static std::size_t memory_limit_mb = 0;
+        if (memory_limit_mb == 0) {
+            // Initialize memory limit on first execution
+            memory_limit_mb = std::min(total_system_memory_mb, 2048);
+        }
         float memory_limit_mb_float = memory_limit_mb;
-        GuiSlider(
-            Rectangle{window_size.x / 2, window_size.y / 2 + 20, 100, 30},
-            "Memory limit",
-            TextFormat("%i MB", memory_limit_mb),
-            &memory_limit_mb_float,
-            1.f, total_system_memory_mb
-        );
+        ImGui::SliderFloat("Memory limit", &memory_limit_mb_float, 1.f, total_system_memory_mb, "%.0f MB");
         memory_limit_mb = static_cast<std::size_t>(memory_limit_mb_float);
 
-        static std::size_t thread_count = this->system_max_threads;
-        float thread_count_float = thread_count;
-        GuiSlider(
-            Rectangle{window_size.x / 2, window_size.y / 2 + 60, 100, 30},
-            "Threads",
-            TextFormat("%i", thread_count),
-            &thread_count_float,
-            1.f, this->system_max_threads
-        );
-        thread_count = static_cast<std::size_t>(thread_count_float);
+        static int thread_count = this->system_max_threads;
+        ImGui::SliderInt("Threads", &thread_count, 1, this->system_max_threads);
         this->engine_thread_count = thread_count;
 
         static bool place_ai_rings_checked = false;
-        GuiCheckBox(
-            Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 100, 20, 20},
-            "Place AI rings manually",
-            &place_ai_rings_checked
-        );
+        ImGui::Checkbox("Place AI rings manually", &place_ai_rings_checked);
 
-        static bool blitz_checked = false;
-        GuiCheckBox(
-            Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 130, 20, 20},
-            "Blitz mode (1 row to win)",
-            &blitz_checked
-        );
-
-        if (GuiButton(
-            Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 170, 200, 30},
-            "Play"
-        )) {
-            if (color_selected == 0) {
+        if (ImGui::Button("Play", ImVec2(-FLT_MIN, 0.0f))) {
+            if (white_selection) {
                 this->white_is_ai = false;
                 this->black_is_ai = true;
             } else {
@@ -740,48 +741,12 @@ void Game::render() {
             this->ai_move_time = move_time;
             this->place_ai_rings = place_ai_rings_checked;
 
-            this->board_state.set_blitz_mode(blitz_checked);
-            this->engine.emplace(blitz_checked, memory_limit_mb * 1024 * 1024);
+            this->engine.emplace(this->board_state.is_blitz, memory_limit_mb * 1024 * 1024);
 
             this->state = Game::State::Playing;
         }
 
-        static bool  show_load_input = false;
-        static char  load_path[512]  = "";
-        static bool  load_error      = false;
-
-        if (!show_load_input) {
-            if (GuiButton(
-                Rectangle{window_size.x / 2 - 100, window_size.y / 2 + 210, 200, 30},
-                "Load Game"
-            )) {
-                show_load_input = true;
-                load_error = false;
-                load_path[0] = '\0';
-            }
-        } else {
-            const float box_y = window_size.y / 2 + 210;
-            GuiTextBox(
-                Rectangle{window_size.x / 2 - 150, box_y, 260, 30},
-                load_path, sizeof(load_path), true
-            );
-            if (GuiButton(Rectangle{window_size.x / 2 + 120, box_y, 60, 30}, "Load")) {
-                if (this->load_game(std::string(load_path))) {
-                    show_load_input = false;
-                    load_error = false;
-                } else {
-                    load_error = true;
-                }
-            }
-            if (GuiButton(Rectangle{window_size.x / 2 + 190, box_y, 60, 30}, "Cancel")) {
-                show_load_input = false;
-                load_error = false;
-            }
-            if (load_error) {
-                DrawText("Failed to load file.", static_cast<int>(window_size.x / 2 - 100),
-                         static_cast<int>(box_y + 36), 16, RED);
-            }
-        }
+        ImGui::End();
     } break;
     case State::Playing: {
         this->camera.BeginMode();
@@ -797,112 +762,51 @@ void Game::render() {
     } break;
     }
 
+    rlImGuiEnd();
     EndDrawing();
 }
 
 void Game::draw_review_bar() {
-    const std::size_t total = this->move_history.size();
-    const bool at_live      = (this->review_cursor == total);
-    const bool at_start     = (this->review_cursor == 0);
+    const std::size_t total_moves = this->move_history.size();
+    const bool at_live = (this->review_cursor == total_moves);
+    const bool at_start = (this->review_cursor == 0);
 
-    const float margin  = 8.f;
-    const float padding = 6.f;
-    const float btn_w   = 36.f;
-    const float btn_h   = 24.f;
-    const float rl_w    = 100.f;
-    const float label_w = 110.f;
-    const int   font_sz = 16;
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoScrollWithMouse |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_AlwaysAutoResize;
 
-    // Four rows:
-    // Row 1: |< < [Move N/M] > >|
-    // Row 2 (centred): [Resume Live]
-    // Row 3 (centred): [Save]
-    // Row 4 (centred): [New Game]
-    const float row_gap  = 4.f;
-    const float save_w   = 60.f;
-    const float ng_w     = 90.f;
-    const float panel_w  = margin + btn_w + padding + btn_w + padding
-                         + label_w + padding + btn_w + padding + btn_w
-                         + margin;
-    const float panel_h  = margin + btn_h + row_gap + btn_h + row_gap + btn_h + row_gap + btn_h + margin;
-    const float panel_x  = margin;
-    const float panel_y  = margin;
+    ImGui::SetNextWindowPos(
+        ImVec2{5, 5},
+        ImGuiCond_Appearing
+    );
 
-    DrawRectangleRounded(
-        Rectangle{panel_x, panel_y, panel_w, panel_h},
-        0.25f, 8, ColorAlpha(BLACK, 0.60f));
+    ImGui::Begin("Review controls", nullptr, flags);
 
-    // --- Row 1: nav buttons + centred label ---
-    float bx      = panel_x + margin;
-    const float by = panel_y + margin;
-
-    // |<
-    if (at_start) GuiSetState(STATE_DISABLED);
-    if (GuiButton(Rectangle{bx, by, btn_w, btn_h}, "|<") && !at_start) {
+    if (ImGui::Button("|<", ImVec2{25, 25})) {
         this->review_cursor = 0;
-        this->rebuild_replay_board();
-        this->state = State::Reviewing;
-    }
-    GuiSetState(STATE_NORMAL);
-    bx += btn_w + padding;
+    }; ImGui::SameLine();
+    if (ImGui::Button("<", ImVec2{25, 25})) {
+        if (this->review_cursor != 0)
+            this->review_cursor--;
+    }; ImGui::SameLine();
 
-    // <
-    if (at_start) GuiSetState(STATE_DISABLED);
-    if (GuiButton(Rectangle{bx, by, btn_w, btn_h}, "<") && !at_start) {
-        this->review_cursor--;
-        this->rebuild_replay_board();
-        this->state = State::Reviewing;
-    }
-    GuiSetState(STATE_NORMAL);
-    bx += btn_w + padding;
+    ImGui::Text("Move %zu / %zu", this->review_cursor, total_moves);
+    ImGui::SameLine();
 
-    // Label — centred within label_w slot
-    const char* counter = TextFormat("Move %zu / %zu", this->review_cursor, total);
-    const int text_px   = MeasureText(counter, font_sz);
-    DrawText(counter,
-             static_cast<int>(bx + (label_w - text_px) / 2.f),
-             static_cast<int>(by + (btn_h - font_sz) / 2.f),
-             font_sz, WHITE);
-    bx += label_w + padding;
+    if (ImGui::Button(">", ImVec2{25, 25})) {
+        if (this->review_cursor < total_moves) {
+            this->review_cursor++;
+        }
+    }; ImGui::SameLine();
+    if (ImGui::Button(">|", ImVec2{25, 25})) {
+        this->review_cursor = total_moves;
+    };
 
-    // >
-    if (at_live) GuiSetState(STATE_DISABLED);
-    if (GuiButton(Rectangle{bx, by, btn_w, btn_h}, ">") && !at_live) {
-        this->review_cursor++;
-        this->rebuild_replay_board();
-        if (this->review_cursor == total)
-            this->state = State::Playing;
-        else
-            this->state = State::Reviewing;
-    }
-    GuiSetState(STATE_NORMAL);
-    bx += btn_w + padding;
-
-    // >|
-    if (at_live) GuiSetState(STATE_DISABLED);
-    if (GuiButton(Rectangle{bx, by, btn_w, btn_h}, ">|") && !at_live) {
-        this->review_cursor = total;
-        this->rebuild_replay_board();
-        this->state = State::Playing;
-    }
-    GuiSetState(STATE_NORMAL);
-
-    // --- Row 2: Resume Live, centred in panel ---
-    const float rl_x = panel_x + (panel_w - rl_w) / 2.f;
-    const float rl_y = by + btn_h + row_gap;
-    if (at_live) GuiSetState(STATE_DISABLED);
-    if (GuiButton(Rectangle{rl_x, rl_y, rl_w, btn_h}, "Resume Live") && !at_live) {
-        this->review_cursor = total;
-        this->rebuild_replay_board();
-        this->state = State::Playing;
-    }
-    GuiSetState(STATE_NORMAL);
-
-    // --- Row 3: Save, centred in panel ---
-    const float save_x = panel_x + (panel_w - save_w) / 2.f;
-    const float save_y = rl_y + btn_h + row_gap;
-    if (this->move_history.empty()) GuiSetState(STATE_DISABLED);
-    if (GuiButton(Rectangle{save_x, save_y, save_w, btn_h}, "Save") && !this->move_history.empty()) {
+    ImGui::BeginDisabled(total_moves == 0);
+    if (ImGui::Button("Save game", ImVec2(-FLT_MIN, 0.0f))) {
         const auto time_str = get_local_time_string();
         std::string file_name = std::format(
             "{}.txt",
@@ -910,13 +814,28 @@ void Game::draw_review_bar() {
         );
         this->save_game(file_name);
     }
-    GuiSetState(STATE_NORMAL);
+    ImGui::EndDisabled();
 
-    // --- Row 4: New Game, centred in panel ---
-    const float ng_x = panel_x + (panel_w - ng_w) / 2.f;
-    const float ng_y = save_y + btn_h + row_gap;
-    if (GuiButton(Rectangle{ng_x, ng_y, ng_w, btn_h}, "New Game")) {
+    bool new_game = false;
+    if (ImGui::Button("New game", ImVec2(-FLT_MIN, 0.0f))) {
+        new_game = true;
+    }
+
+    ImGui::End();
+
+    if (new_game) {
         this->reset_game();
+        return;
+    }
+
+    // Rebuild replay board everytime because it's simpler,
+    // even if we didn't change anything
+    this->rebuild_replay_board();
+
+    if (this->review_only || this->review_cursor != total_moves) {
+        this->state = State::Reviewing;
+    } else {
+        this->state = State::Playing;
     }
 }
 

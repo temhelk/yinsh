@@ -7,12 +7,12 @@
 [submodule "extern/yngine"]
 	path = extern/yngine
 	url = https://github.com/temhelk/yngine
-[submodule "extern/raygui"]
-	path = extern/raygui
-	url = https://github.com/raysan5/raygui
 [submodule "extern/rlImGui"]
 	path = extern/rlImGui
 	url = https://github.com/raylib-extras/rlImGui.git
 [submodule "extern/imgui"]
 	path = extern/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "extern/nativefiledialog-extended"]
+	path = extern/nativefiledialog-extended
+	url = https://github.com/btzy/nativefiledialog-extended.git

@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 class Game {
 public:
@@ -48,7 +49,7 @@ private:
 
     // Load a native save file into move_history and enter Reviewing at move 0
     // Returns false and prints to stderr on parse/validation error
-    bool load_game(const std::string& path);
+    bool load_game(const std::filesystem::path& path);
 
     // Reset all game state and return to the mode-selection screen
     void reset_game();
@@ -77,6 +78,7 @@ private:
     HVec2 row_remove_to;
 
     // Move history and review state
+    bool review_only = false; // if we loaded a game we don't want to be able to play
     std::vector<Yngine::Move> move_history;
     std::size_t review_cursor = 0; // == move_history.size() when at live position
     BoardState replay_board;       // re-derived board for review mode
