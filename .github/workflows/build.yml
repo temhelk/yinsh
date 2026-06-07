@@ -1,0 +1,132 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os }} (${{ matrix.compiler }})
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+            cc: gcc
+            cxx: g++
+            package_suffix: linux-gcc
+          - os: ubuntu-latest
+            compiler: clang
+            cc: clang
+            cxx: clang++
+            package_suffix: linux-clang
+            
+          - os: windows-latest
+            compiler: gcc
+            msys_env: UCRT64
+            msys_pkgs: >-
+              mingw-w64-ucrt-x86_64-gcc
+              mingw-w64-ucrt-x86_64-cmake
+              mingw-w64-ucrt-x86_64-ninja
+            generator: "Ninja"
+            package_suffix: windows-gcc.exe
+          - os: windows-latest
+            compiler: clang
+            msys_env: CLANG64
+            msys_pkgs: >-
+              mingw-w64-clang-x86_64-clang
+              mingw-w64-clang-x86_64-cmake
+              mingw-w64-clang-x86_64-ninja
+            generator: "Ninja"
+            package_suffix: windows-clang.exe
+              
+    defaults:
+      run:
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup MSYS2 (Windows only)
+      if: matrix.os == 'windows-latest'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: ${{ matrix.msys_env }}
+        update: true
+        install: >-
+          git
+          ${{ matrix.msys_pkgs }}
+
+    - name: Install linux packages
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libasound2-dev \
+          libx11-dev \
+          libxrandr-dev \
+          libxi-dev \
+          libxinerama-dev \
+          libxcursor-dev \
+          libxkbcommon-dev \
+          libgl1-mesa-dev \
+          libglu1-mesa-dev \
+          libgtk-3-dev
+        if [ "${{ matrix.compiler }}" = "clang" ]; then
+          sudo apt-get install -y clang
+        fi
+
+    - name: Configure and Build
+      run: |
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          export CC=${{ matrix.cc }}
+          export CXX=${{ matrix.cxx }}
+        fi
+        
+        echo "Building with $(g++ --version || clang++ --version)"
+        
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build
+        
+        mkdir -p dist
+        cp build/yinsh-gui/Yinsh-gui* dist/yinsh-gui-${{ matrix.package_suffix }}
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: yinsh-${{ matrix.package_suffix }}
+        path: dist/
+        retention-days: 1
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: yinsh-*
+          path: all-artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: all-artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
