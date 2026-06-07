@@ -631,6 +631,7 @@ void Game::render() {
         ImGui::Begin("Game settings", nullptr, flags);
 
         if (ImGui::Button("Player vs AI", ImVec2(-FLT_MIN, 0.0f))) {
+            this->board_state.is_blitz = blitz_selection;
             this->state = Game::State::ChoosingAISettings;
         }
 
