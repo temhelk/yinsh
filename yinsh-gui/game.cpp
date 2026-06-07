@@ -9,10 +9,13 @@
 #include <rlImGui.h>
 #include <imgui.h>
 
+#if !defined(__EMSCRIPTEN__)
 #include <nfd.hpp>
+#endif
 
-#if defined(EMSCRIPTEN)
-    #include <emscripten/emscripten.h>
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#include <emscripten_browser_file.h>
 #endif
 
 #include <cassert>
@@ -85,7 +88,7 @@ Game::Game()
 void update_draw_frame(void* game_voidptr) {
     auto game = static_cast<Game*>(game_voidptr);
 
-#if defined(EMSCRIPTEN)
+#if defined(__EMSCRIPTEN__)
     // Keep the raylib window in sync with the browser canvas each frame
     const int cw = EM_ASM_INT({ return window.innerWidth; });
     const int ch = EM_ASM_INT({ return window.innerHeight; });
@@ -100,7 +103,7 @@ void update_draw_frame(void* game_voidptr) {
 }
 
 void Game::run() {
-#if defined(EMSCRIPTEN)
+#if defined(__EMSCRIPTEN__)
     // On web, match the canvas to the browser window from the start
     const int initial_w = EM_ASM_INT({ return window.innerWidth; });
     const int initial_h = EM_ASM_INT({ return window.innerHeight; });
@@ -129,9 +132,11 @@ void Game::run() {
     rlImGuiSetup(true);
     IMGUI_CHECKVERSION();
 
+#if !defined(__EMSCRIPTEN__)
     NFD::Init();
+#endif
 
-#if defined(EMSCRIPTEN)
+#if defined(__EMSCRIPTEN__)
     emscripten_set_main_loop_arg(
         update_draw_frame,
         this,
@@ -148,7 +153,9 @@ void Game::run() {
 #endif
 
     std::cout << "Shutting down" << std::endl;
+#if !defined(__EMSCRIPTEN__)
     NFD::Quit();
+#endif
     rlImGuiShutdown();
 }
 
@@ -244,38 +251,49 @@ static std::string row_end_notation(uint8_t from, Yngine::Direction dir) {
     return index_to_notation(end_index);
 }
 
-void Game::save_game(const std::string& path) {
-    std::ofstream f(path);
+void Game::save_game(const std::string& filename) {
+#if defined(__EMSCRIPTEN__)
+    std::ostringstream data{};
+    this->save_game_stream(data);
+
+    emscripten_browser_file::download(filename, "application/text/plain", data.str());
+#else
+    std::ofstream f(filename);
     if (!f) {
         std::cerr << "Failed to save the game" << std::endl;
         return;
     }
 
+    this->save_game_stream(f);
+#endif
+}
+
+void Game::save_game_stream(std::ostream& stream) {
     // Timestamp header
     const auto time_str = get_local_time_string();
-    f << "# DATE " << time_str << "\n";
+    stream << "# DATE " << time_str << "\n";
 
     // Player colour (human side); for PvP both sides are human
     if (!this->white_is_ai && !this->black_is_ai) {
-        f << "# PLAYER_COLOR Both\n";
+        stream << "# PLAYER_COLOR Both\n";
     } else {
-        f << "# PLAYER_COLOR " << (this->white_is_ai ? "Black" : "White") << "\n";
+        stream << "# PLAYER_COLOR " << (this->white_is_ai ? "Black" : "White") << "\n";
     }
 
     // Result — count rings on board to determine winner
     const bool game_over = (this->board_state.get_next_action() == BoardState::NextAction::GameOver);
     if (!game_over) {
-        f << "# RESULT Unfinished\n";
+        stream << "# RESULT Unfinished\n";
     } else {
         switch (this->board_state.game_result()) {
         case Yngine::GameResult::WhiteWon: {
-            f << "# RESULT White\n";
+            stream << "# RESULT White\n";
         } break;
         case Yngine::GameResult::BlackWon: {
-            f << "# RESULT Black\n";
+            stream << "# RESULT Black\n";
         } break;
         case Yngine::GameResult::Draw: {
-            f << "# RESULT Draw\n";
+            stream << "# RESULT Draw\n";
         } break;
         }
     }
@@ -284,18 +302,18 @@ void Game::save_game(const std::string& path) {
     for (const auto& move : this->move_history) {
         std::visit(Yngine::variant_overloaded{
             [&](const Yngine::PlaceRingMove& m) {
-                f << "PLACE " << index_to_notation(m.index) << "\n";
+                stream << "PLACE " << index_to_notation(m.index) << "\n";
             },
             [&](const Yngine::RingMove& m) {
-                f << "MOVE " << index_to_notation(m.from)
+                stream << "MOVE " << index_to_notation(m.from)
                   << " "     << index_to_notation(m.to) << "\n";
             },
             [&](const Yngine::RemoveRowMove& m) {
-                f << "REMOVE_ROW " << index_to_notation(m.from)
+                stream << "REMOVE_ROW " << index_to_notation(m.from)
                   << " "           << row_end_notation(m.from, m.direction) << "\n";
             },
             [&](const Yngine::RemoveRingMove& m) {
-                f << "REMOVE_RING " << index_to_notation(m.index) << "\n";
+                stream << "REMOVE_RING " << index_to_notation(m.index) << "\n";
             },
             [&](const Yngine::PassMove&) {
                 // No PASS line in format
@@ -361,12 +379,16 @@ bool Game::load_game(const std::filesystem::path& path) {
         return false;
     }
 
+    this->load_game_stream(f);
+}
+
+bool Game::load_game_stream(std::istream& stream) {
     std::vector<Yngine::Move> loaded;
     BoardState validator;
     std::string line;
     int line_num = 0;
 
-    while (std::getline(f, line)) {
+    while (std::getline(stream, line)) {
         line_num++;
         // Strip trailing whitespace
         while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
@@ -591,6 +613,15 @@ std::optional<Yngine::Move> Game::get_player_move() {
     return std::nullopt;
 }
 
+void Game::handle_upload_file(std::string const &filename, std::string const &mime_type, std::string_view buffer, void* game_ptr) {
+    auto game = static_cast<Game*>(game_ptr);
+
+    auto save = std::string{buffer};
+    auto stream = std::istringstream{save};
+
+    game->load_game_stream(stream);
+}
+
 void Game::render() {
     if (this->window.IsResized()) {
         this->update_camera();
@@ -665,6 +696,9 @@ void Game::render() {
         ImGui::NewLine();
 
         if (ImGui::Button("Load game", ImVec2(-FLT_MIN, 0.0f))) {
+#if defined(__EMSCRIPTEN__)
+            emscripten_browser_file::upload("application/text/plain", handle_upload_file, static_cast<void*>(this));
+#else
             auto app_dir_path = GetApplicationDirectory();
             auto app_dir_path_native = std::filesystem::path(std::string(app_dir_path)).c_str();
 
@@ -674,6 +708,7 @@ void Game::render() {
                 std::cout << "Loading game: " << open_path << std::endl;
                 this->load_game(open_path);
             }
+#endif
         }
 
         ImGui::End();

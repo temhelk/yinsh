@@ -14,7 +14,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(EMSCRIPTEN)
     add_compile_options(-pthread)
-    add_link_options(-sALLOW_MEMORY_GROWTH -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE_STRICT=0)
+    add_link_options(
+        -sALLOW_MEMORY_GROWTH=1
+        -sUSE_PTHREADS=1
+        -sPTHREAD_POOL_SIZE_STRICT=0
+    )
 endif()
 
 add_subdirectory(yinsh-gui)
@@ -31,5 +35,10 @@ target_link_libraries(Yinsh-gui PRIVATE raylib_cpp)
 include(extern/imgui.cmake)
 target_link_libraries(Yinsh-gui PRIVATE imgui)
 
-add_subdirectory(extern/nativefiledialog-extended)
-target_link_libraries(Yinsh-gui PRIVATE nfd)
+if(EMSCRIPTEN)
+    add_subdirectory(extern/emscripten-browser-file)
+    target_link_libraries(Yinsh-gui PRIVATE emscripten-browser-file)
+else()
+    add_subdirectory(extern/nativefiledialog-extended)
+    target_link_libraries(Yinsh-gui PRIVATE nfd)
+endif()

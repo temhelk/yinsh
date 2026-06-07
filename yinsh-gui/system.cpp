@@ -4,7 +4,7 @@
 #include <sys/sysinfo.h>
 #elif defined(_WIN32)
 #include <Windows.h>
-#elif defined(EMSCRIPTEN)
+#elif defined(__EMSCRIPTEN__)
 #include <emscripten/threading.h>
 #endif
 
@@ -21,7 +21,7 @@ std::size_t get_system_memory() {
     GetPhysicallyInstalledSystemMemory(&total_memory);
     return total_memory * 1024;
 }
-#elif defined(EMSCRIPTEN)
+#elif defined(__EMSCRIPTEN__)
 std::size_t get_system_memory() {
     // Return 1.5GB
     return 1536 * 1024 * 1024;
@@ -39,7 +39,7 @@ int get_system_threads() {
 
     return system_info.dwNumberOfProcessors;
 }
-#elif defined(EMSCRIPTEN)
+#elif defined(__EMSCRIPTEN__)
 int get_system_threads() {
     return emscripten_num_logical_cores();
 }

@@ -31,6 +31,8 @@ private:
         Reviewing,
     };
 
+    static void handle_upload_file(std::string const &filename, std::string const &mime_type, std::string_view buffer, void* game_ptr);
+
     void update();
     std::optional<Yngine::Move> get_player_move();
 
@@ -45,11 +47,17 @@ private:
     void rebuild_replay_board();
 
     // Save move_history to a file in the native save format
-    void save_game(const std::string& path);
+    void save_game(const std::string& filename);
+
+    // Write game to a stream in the native save format
+    void save_game_stream(std::ostream& stream);
 
     // Load a native save file into move_history and enter Reviewing at move 0
     // Returns false and prints to stderr on parse/validation error
     bool load_game(const std::filesystem::path& path);
+
+    // Load a native save from a stream, see load_game
+    bool load_game_stream(std::istream& stream);
 
     // Reset all game state and return to the mode-selection screen
     void reset_game();
