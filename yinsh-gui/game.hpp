@@ -65,7 +65,6 @@ private:
     // When true, the human places *all* rings during the initial placement phase
     // (including the AI's rings) so that custom openings can be tested.
     bool place_ai_rings;
-    bool blitz_mode;
 
     BoardState board_state;
 

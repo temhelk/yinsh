@@ -68,7 +68,6 @@ Game::Game()
     , black_is_ai{false}
     , ai_move_time{1.f}
     , place_ai_rings{false}
-    , blitz_mode{false}
     , board_state{}
     , selected_ring{}
     , ring_moves{}
@@ -455,7 +454,6 @@ void Game::reset_game() {
     this->white_is_ai     = false;
     this->black_is_ai     = false;
     this->place_ai_rings  = false;
-    this->blitz_mode      = false;
     this->state           = State::ChoosingMode;
 }
 
@@ -600,12 +598,7 @@ void Game::render() {
         )) {
             this->white_is_ai = false;
             this->black_is_ai = false;
-            this->blitz_mode = pvp_blitz_checked;
-            if (pvp_blitz_checked) {
-                this->board_state.set_mode(4);
-            } else {
-                this->board_state.set_mode(2);
-            }
+            this->board_state.set_blitz_mode(pvp_blitz_checked);
             this->state = Game::State::Playing;
         }
 
@@ -737,17 +730,9 @@ void Game::render() {
 
             this->ai_move_time = move_time;
             this->place_ai_rings = place_ai_rings_checked;
-            this->blitz_mode = blitz_checked;
 
-            if (blitz_checked) {
-                // Blitz: win when 4 rings remain (1 row removed)
-                this->board_state.set_mode(4);
-            } else {
-                // Standard: win when 2 rings remain (3 rows removed)
-                this->board_state.set_mode(2);
-            }
-
-            this->engine.emplace(true, memory_limit_mb * 1024 * 1024);
+            this->board_state.set_blitz_mode(blitz_checked);
+            this->engine.emplace(blitz_checked, memory_limit_mb * 1024 * 1024);
 
             this->state = Game::State::Playing;
         }

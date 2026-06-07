@@ -423,14 +423,16 @@ void BoardState::remove_ring(HVec2 pos) {
         this->black_rings_on_board--;
     }
 
-    if (this->white_rings_on_board == this->win_rings_remaining ||
-        this->black_rings_on_board == this->win_rings_remaining) {
+    int win_rings_remaining = this->is_blitz ? 4 : 2;
+
+    if (this->white_rings_on_board == win_rings_remaining ||
+        this->black_rings_on_board == win_rings_remaining) {
         this->next_action = NextAction::GameOver;
     } else {
         check_for_rows_and_change_state(this->last_move_from, this->last_move_to);
     }
 }
 
-void BoardState::set_mode(int win_rings_remaining) {
-    this->win_rings_remaining = win_rings_remaining;
+void BoardState::set_blitz_mode(bool state) {
+    this->is_blitz = state;
 }

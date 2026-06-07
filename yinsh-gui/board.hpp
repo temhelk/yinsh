@@ -69,10 +69,7 @@ public:
     bool is_move_legal(Yngine::Move move) const;
     void apply_move(Yngine::Move move);
 
-    // Configure game mode before play begins.
-    // win_rings_remaining: rings left on board that trigger a win (default 2,
-    //   meaning 3 rows removed; blitz uses 4 = 1 row removed).
-    void set_mode(int win_rings_remaining);
+    void set_blitz_mode(bool state);
 
     std::vector<HVec2> get_ring_moves(HVec2 pos) const;
 
@@ -98,7 +95,7 @@ private:
     int white_rings_on_board = 0;
     int black_rings_on_board = 0;
 
-    int win_rings_remaining = 2;
+    bool is_blitz = false;
 
     HVec2 last_move_from;
     HVec2 last_move_to;
