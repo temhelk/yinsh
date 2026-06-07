@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 4.0)
 
 project(
     Yinsh-gui
@@ -31,3 +31,6 @@ target_link_libraries(Yinsh-gui PRIVATE raylib_cpp)
 add_library(raygui INTERFACE)
 target_include_directories(raygui INTERFACE extern/raygui/src)
 target_link_libraries(Yinsh-gui PRIVATE raygui)
+
+include(extern/imgui.cmake)
+target_link_libraries(Yinsh-gui PRIVATE imgui)

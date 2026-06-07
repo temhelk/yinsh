@@ -8,6 +8,9 @@
 #define RAYGUI_IMPLEMENTATION
 #include <raygui.h>
 
+#include <rlImGui.h>
+#include <imgui.h>
+
 #if defined(EMSCRIPTEN)
     #include <emscripten/emscripten.h>
 #endif
@@ -124,6 +127,9 @@ void Game::run() {
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
 
+    rlImGuiSetup(true);
+    IMGUI_CHECKVERSION();
+
 #if defined(EMSCRIPTEN)
     emscripten_set_main_loop_arg(
         update_draw_frame,
@@ -139,6 +145,9 @@ void Game::run() {
         this->render();
     }
 #endif
+
+    std::cout << "Shutting down" << std::endl;
+    rlImGuiShutdown();
 }
 
 void Game::update() {
