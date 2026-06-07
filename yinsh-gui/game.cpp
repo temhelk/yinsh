@@ -872,42 +872,6 @@ void Game::draw_board(const BoardState& board) {
         to_vector2(start.to_world()).DrawLine(to_vector2(end.to_world()), line_thickness, line_color);
     }
 
-    // Draw column letters A-K below the bottom node of each diagonal (x+y = const)
-    // The diagonal with index i has letter chr('A' + i), i = 0..10
-    // Its bottom node (largest world_y) is: start = HVec2{10,y} + up*BOARD_START_OFFSET[i]
-    //   where y = i - 5
-    for (int32_t i = 0; i < 11; i++) {
-        const int32_t y = i - 5;
-        const auto bottom_node = HVec2{10, y} + HVec2::up() * BOARD_START_OFFSET[i];
-        const auto world_pos = to_vector2(bottom_node.to_world());
-
-        const char letter[2] = { static_cast<char>('A' + i), '\0' };
-        const auto text_size = MeasureTextEx(font, letter, label_size, label_spacing);
-
-        // Place centred horizontally, just below the bottom node
-        const auto draw_pos = Vector2{
-            world_pos.x - text_size.x / 2.f,
-            world_pos.y + 0.15f
-        };
-        DrawTextEx(font, letter, draw_pos, label_size, label_spacing, label_color);
-    }
-
-    // Draw row numbers 1-11 to the left of the leftmost node of each y=const row
-    for (int32_t row_y = 0; row_y < 11; row_y++) {
-        const auto left_node = HVec2{BOARD_START_OFFSET[row_y], row_y};
-        const auto world_pos = to_vector2(left_node.to_world());
-
-        const char* num_str = TextFormat("%i", row_y + 1);
-        const auto text_size = MeasureTextEx(font, num_str, label_size, label_spacing);
-
-        // Place centred vertically, just to the left of the leftmost node
-        const auto draw_pos = Vector2{
-            world_pos.x - text_size.x - 0.15f,
-            world_pos.y - text_size.y / 2.f
-        };
-        DrawTextEx(font, num_str, draw_pos, label_size, label_spacing, label_color);
-    }
-
     // Draw possible moves if a ring is selected
     if (this->selected_ring) {
         for (const auto move_pos : this->ring_moves) {
@@ -976,6 +940,42 @@ void Game::draw_board(const BoardState& board) {
                 }
             }
         }
+    }
+
+    // Draw column letters A-K below the bottom node of each diagonal (x+y = const)
+    // The diagonal with index i has letter chr('A' + i), i = 0..10
+    // Its bottom node (largest world_y) is: start = HVec2{10,y} + up*BOARD_START_OFFSET[i]
+    //   where y = i - 5
+    for (int32_t i = 0; i < 11; i++) {
+        const int32_t y = i - 5;
+        const auto bottom_node = HVec2{10, y} + HVec2::up() * BOARD_START_OFFSET[i];
+        const auto world_pos = to_vector2(bottom_node.to_world());
+
+        const char letter[2] = { static_cast<char>('A' + i), '\0' };
+        const auto text_size = MeasureTextEx(font, letter, label_size, label_spacing);
+
+        // Place centred horizontally, just below the bottom node
+        const auto draw_pos = Vector2{
+            world_pos.x - text_size.x / 2.f,
+            world_pos.y + 0.15f
+        };
+        DrawTextEx(font, letter, draw_pos, label_size, label_spacing, label_color);
+    }
+
+    // Draw row numbers 1-11 to the left of the leftmost node of each y=const row
+    for (int32_t row_y = 0; row_y < 11; row_y++) {
+        const auto left_node = HVec2{BOARD_START_OFFSET[row_y], row_y};
+        const auto world_pos = to_vector2(left_node.to_world());
+
+        const char* num_str = TextFormat("%i", row_y + 1);
+        const auto text_size = MeasureTextEx(font, num_str, label_size, label_spacing);
+
+        // Place centred vertically, just to the left of the leftmost node
+        const auto draw_pos = Vector2{
+            world_pos.x - text_size.x - 0.15f,
+            world_pos.y - text_size.y / 2.f
+        };
+        DrawTextEx(font, num_str, draw_pos, label_size, label_spacing, label_color);
     }
 }
 
