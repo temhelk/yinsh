@@ -39,12 +39,16 @@ private:
     void render();
     void draw_board(const BoardState& board);
     void draw_review_bar();
+    void draw_engine_analysis();
 
     // Update the camera parameters to get the correct view when window size changes
     void update_camera();
 
     // Rebuild replay_board by replaying move_history[0..review_cursor)
     void rebuild_replay_board();
+
+    // Generate engine replay board similar to rebuild_replay_board, but for engine's type
+    Yngine::BoardState build_engine_replay_board(bool is_blitz);
 
     // Save move_history to a file in the native save format
     void save_game(const std::string& filename);
@@ -87,6 +91,7 @@ private:
 
     // Move history and review state
     bool review_only = false; // if we loaded a game we don't want to be able to play
+    bool reviewing_blitz = false; // @TODO: remove this and use save file, set it on load
     std::vector<Yngine::Move> move_history;
     std::size_t review_cursor = 0; // == move_history.size() when at live position
     BoardState replay_board;       // re-derived board for review mode
@@ -94,11 +99,15 @@ private:
 
     // Not null if we play against AI
     std::optional<Yngine::MCTS> engine;
-    int engine_thread_count;
+    int engine_thread_count; // The thread count is configured per search, not in engine
+                             // constructor, so we store it here until we use it
     std::chrono::high_resolution_clock::time_point engine_search_start_time;
 
     std::size_t total_system_memory;
     int system_max_threads;
 };
+
+// @TODO: deduplicate that code and move somewhere?
+std::string move_to_string(Yngine::Move move);
 
 #endif // YINSH_GUI_GAME_HPP

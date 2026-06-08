@@ -152,7 +152,7 @@ void Game::run() {
     }
 #endif
 
-    std::cout << "Shutting down" << std::endl;
+    std::cout << "DEBUG: Shutting down" << std::endl;
 #if !defined(__EMSCRIPTEN__)
     NFD::Quit();
 #endif
@@ -246,6 +246,14 @@ void Game::rebuild_replay_board() {
     for (std::size_t i = 0; i < this->review_cursor; i++) {
         this->replay_board.apply_move(this->move_history[i]);
     }
+}
+
+Yngine::BoardState Game::build_engine_replay_board(bool is_blitz) {
+    Yngine::BoardState replay_board;
+    for (std::size_t i = 0; i < this->review_cursor; i++) {
+        replay_board.apply_move(this->move_history[i], is_blitz ? 4 : 2);
+    }
+    return replay_board;
 }
 
 // Convert an engine board index to "Letter+Number" notation (e.g. index -> "E4")
@@ -398,6 +406,8 @@ bool Game::load_game(const std::filesystem::path& path) {
 }
 
 bool Game::load_game_stream(std::istream& stream) {
+    this->reset_game();
+
     std::vector<Yngine::Move> loaded;
     BoardState validator;
     std::string line;
@@ -473,18 +483,12 @@ parse_error:
         return false;
     }
 
-    // Success — replace game state
     this->move_history  = std::move(loaded);
-    this->review_cursor = 0;
-    this->auto_saved    = true; // don't auto-save a loaded game
-    this->board_state   = BoardState{};
-    this->engine        = std::nullopt;
-    this->selected_ring = std::nullopt;
-    this->ring_moves.clear();
-    this->row_remove_from = std::nullopt;
+    this->auto_saved    = true;
     this->rebuild_replay_board();
     this->review_only = true;
     this->state = State::Reviewing;
+
     return true;
 }
 
@@ -718,7 +722,7 @@ void Game::render() {
             static NFD::UniquePathN open_path_selection;
             if (NFD::OpenDialog(open_path_selection, nullptr, 0, app_dir_path_native) == NFD_OKAY) {
                 std::filesystem::path open_path{open_path_selection.get()};
-                std::cout << "Loading game: " << open_path << std::endl;
+                std::cout << "DEBUG: Loading game: " << open_path << std::endl;
                 this->load_game(open_path);
             }
 #endif
@@ -766,7 +770,7 @@ void Game::render() {
         static std::size_t memory_limit_mb = 0;
         if (memory_limit_mb == 0) {
             // Initialize memory limit on first execution
-            memory_limit_mb = std::min(total_system_memory_mb, 2048);
+            memory_limit_mb = total_system_memory_mb;
         }
         float memory_limit_mb_float = memory_limit_mb;
         ImGui::SliderFloat("Memory limit", &memory_limit_mb_float, 1.f, total_system_memory_mb, "%.0f MB");
@@ -809,6 +813,11 @@ void Game::render() {
         this->draw_board(this->replay_board);
         this->camera.EndMode();
         this->draw_review_bar();
+
+        // Do engine analysis only in pure review mode (without playing)
+        if (this->review_only) {
+            this->draw_engine_analysis();
+        }
     } break;
     }
 
@@ -817,6 +826,8 @@ void Game::render() {
 }
 
 void Game::draw_review_bar() {
+    const auto original_cursor_position = this->review_cursor;
+
     const std::size_t total_moves = this->move_history.size();
     const bool at_live = (this->review_cursor == total_moves);
     const bool at_start = (this->review_cursor == 0);
@@ -887,6 +898,84 @@ void Game::draw_review_bar() {
     } else {
         this->state = State::Playing;
     }
+
+    // If analysing the game with the engine update the search
+    if (this->review_only &&
+        this->engine &&
+        original_cursor_position != this->review_cursor) {
+        this->engine->stop_search();
+
+        const auto new_replay_board = this->build_engine_replay_board(this->reviewing_blitz);
+
+        this->engine->set_board(new_replay_board);
+        this->engine->start_search(this->engine_thread_count);
+    }
+}
+
+void Game::draw_engine_analysis() {
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoScrollWithMouse;
+
+    ImGui::SetNextWindowSizeConstraints(
+        ImVec2(300.f, -1.f),
+        ImVec2(FLT_MAX, -1.f)
+    );
+
+    ImGui::Begin("Engine analysis", nullptr, flags);
+
+    // Engine is not running, give option to enable
+    if (!this->engine) {
+        const int total_system_memory_mb = this->total_system_memory / 1024 / 1024;
+        static std::size_t memory_limit_mb = 0;
+        if (memory_limit_mb == 0) {
+            // Initialize memory limit on first execution
+            memory_limit_mb = total_system_memory_mb;
+        }
+        float memory_limit_mb_float = memory_limit_mb;
+        ImGui::SliderFloat("Memory limit", &memory_limit_mb_float, 1.f, total_system_memory_mb, "%.0f MB");
+        memory_limit_mb = static_cast<std::size_t>(memory_limit_mb_float);
+
+        static int thread_count = this->system_max_threads;
+        ImGui::SliderInt("Threads", &thread_count, 1, this->system_max_threads);
+        this->engine_thread_count = thread_count;
+
+        static bool blitz_mode = false;
+        ImGui::Checkbox("Blitz mode", &blitz_mode);
+
+        if (ImGui::Button("Start engine", ImVec2(-FLT_MIN, 0.0f))) {
+            // @TODO: we should read and store blitz vs classical mode information
+            // in the save file!
+            this->reviewing_blitz = blitz_mode;
+            this->engine.emplace(blitz_mode, memory_limit_mb * 1024 * 1024);
+
+            this->engine->set_board(this->build_engine_replay_board(blitz_mode));
+            this->engine->start_search(this->engine_thread_count);
+        }
+    } else { // Engine enabled
+        assert(this->engine);
+        auto search_info_opt = this->engine->get_search_info();
+
+        if (search_info_opt) {
+            auto search_info = *search_info_opt;
+            ImGui::Text("Best move: %s", move_to_string(search_info.best_move).c_str());
+            ImGui::Text("Win rate: %.1f%%", search_info.win_rate * 100.f);
+            ImGui::Text("Confidence: %.1f%%", search_info.confidence * 100.f);
+            ImGui::Text("Iterations: %'lu", search_info.iterations);
+
+            const float memory_used_ratio = (float)search_info.memory_used / this->total_system_memory;
+            ImGui::ProgressBar(memory_used_ratio, ImVec2(0.0f, 0.0f));
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::Text("Mem");
+
+            if (ImGui::Button("Stop engine")) {
+                this->engine->stop_search();
+                this->engine = std::nullopt;
+            }
+        }
+    }
+
+    ImGui::End();
 }
 
 void Game::draw_board(const BoardState& board) {
@@ -1046,4 +1135,30 @@ HVec2 Game::get_mouse_hex_pos() {
     const auto hex_pos = from_vector2(world_pos).from_world();
 
     return hex_pos;
+}
+
+std::string move_to_string(Yngine::Move move) {
+    std::stringstream stream;
+
+    std::visit(Yngine::variant_overloaded{
+        [&](const Yngine::PlaceRingMove& m) {
+            stream << "PLACE " << index_to_notation(m.index) << "\n";
+        },
+        [&](const Yngine::RingMove& m) {
+            stream << "MOVE " << index_to_notation(m.from)
+                << " "     << index_to_notation(m.to) << "\n";
+        },
+        [&](const Yngine::RemoveRowMove& m) {
+            stream << "REMOVE_ROW " << index_to_notation(m.from)
+                << " "           << row_end_notation(m.from, m.direction) << "\n";
+        },
+        [&](const Yngine::RemoveRingMove& m) {
+            stream << "REMOVE_RING " << index_to_notation(m.index) << "\n";
+        },
+        [&](const Yngine::PassMove&) {
+            // No PASS line in format
+        },
+    }, move);
+
+    return stream.str();
 }
