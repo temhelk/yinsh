@@ -30,6 +30,9 @@ jobs:
             cc: clang
             cxx: clang++
             package_suffix: linux-clang
+          - os: ubuntu-latest
+            compiler: emcc
+            package_suffix: web.zip
             
           - os: windows-latest
             compiler: gcc
@@ -91,20 +94,38 @@ jobs:
           sudo apt-get install -y clang
         fi
 
-    - name: Configure and Build
+    - name: Configure and Build (non-web)
+      if: matrix.compiler != 'emcc'
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --parallel
+        
+        mkdir -p dist
+        cp build/yinsh-gui/Yinsh-gui* dist/yinsh-gui-${{ matrix.package_suffix }}
+
+    - name: Setup emscripten
+      if: matrix.compiler == 'emcc'
+      uses: emscripten-core/setup-emsdk@v15
+
+    - name: Configure and Build (web)
+      if: matrix.compiler == 'emcc'
       run: |
         if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
           export CC=${{ matrix.cc }}
           export CXX=${{ matrix.cxx }}
         fi
-        
-        echo "Building with $(g++ --version || clang++ --version)"
-        
+
         cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-        cmake --build build
-        
+        cmake --build build --target Yngine --parallel
+
+        emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Release -DPLATFORM=Web
+        cmake --build build-web --parallel
+
+        cp build-web/yinsh-gui/Yinsh-gui.html build-web/yinsh-gui/index.html
+
         mkdir -p dist
-        cp build/yinsh-gui/Yinsh-gui* dist/yinsh-gui-${{ matrix.package_suffix }}
+
+        zip dist/yinsh-web.zip build-web/yinsh-gui/{index.html,Yinsh-gui.js,Yinsh-gui.wasm}
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v7
