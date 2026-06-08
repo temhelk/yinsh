@@ -125,7 +125,7 @@ jobs:
 
         mkdir -p dist
 
-        zip dist/yinsh-web.zip build-web/yinsh-gui/{index.html,Yinsh-gui.js,Yinsh-gui.wasm}
+        zip -j dist/yinsh-web.zip build-web/yinsh-gui/{index.html,Yinsh-gui.js,Yinsh-gui.wasm}
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v7
