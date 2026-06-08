@@ -190,7 +190,15 @@ void Game::update() {
         if (ai_turn && !(this->place_ai_rings && in_placement)) {
             assert(this->engine);
 
-            if (!this->engine->is_searching()) {
+            // We want to check for forced moves so that we don't have to wait for
+            // the move time for the AI to move, so we check for it before searching
+            if (auto forced_move = this->engine->check_for_forced_move()) {
+                this->board_state.apply_move(*forced_move);
+                engine->apply_move(*forced_move);
+
+                this->move_history.push_back(*forced_move);
+                this->review_cursor = this->move_history.size();
+            } else if (!this->engine->is_searching()) {
                 this->engine->start_search(this->engine_thread_count);
                 this->engine_search_start_time = std::chrono::high_resolution_clock::now();
             } else {
@@ -198,21 +206,21 @@ void Game::update() {
                 const std::chrono::duration<float> elapsed = now - this->engine_search_start_time;
                 if (elapsed.count() >= this->ai_move_time) {
                     this->engine->stop_search();
-                    const auto move = this->engine->get_best_move();
-
-                    if (!move.has_value()) {
+                    const auto search_info = this->engine->get_search_info();
+                    if (!search_info) {
                         std::cerr << "WARNING: Engine didn't find any moves!" << std::endl;
                         abort();
                     }
 
-                    this->board_state.apply_move(*move);
-                    engine->apply_move(*move);
+                    const auto move = search_info->best_move;
 
-                    this->move_history.push_back(*move);
+                    this->board_state.apply_move(move);
+                    engine->apply_move(move);
+
+                    this->move_history.push_back(move);
                     this->review_cursor = this->move_history.size();
                 }
             }
-
         } else {
             const auto move = this->get_player_move();
 
