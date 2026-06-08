@@ -4,7 +4,7 @@
 ## Description
 Rules of Yinsh: https://www.gipf.com/yinsh/rules/rules.html
 
-Yinsh board game written with [raylib](https://github.com/raysan5/raylib) that allows you to play against AI or another player locally
+Yinsh board game written with [raylib](https://github.com/raysan5/raylib) and [ImGui](https://github.com/ocornut/imgui) that allows you to play against AI or another player locally
 
 Uses [yngine](https://github.com/temhelk/yngine) as an engine for AI
 
@@ -12,6 +12,8 @@ Uses [yngine](https://github.com/temhelk/yngine) as an engine for AI
 The game can be compiled for Linux, Windows, and Web (WASM).
 
 The project uses submodules to download dependencies so use recursive flag when cloning it: `git clone --recursive https://github.com/temhelk/yinsh`
+
+You can also refer to github actions for building scripts
 
 Linux (gcc, clang):
 - Install neccessary build tools like cmake, make and the compiler
@@ -29,3 +31,16 @@ Windows (mingw64 or clang with MSYS2, msvc is not supported yet):
 - Configure cmake `cmake -GNinja -S . -B build-release -DCMAKE_BUILD_TYPE=Release`
 - Build the game `cmake --build build-release --parallel`
 - The resulting binary should be available at `./build-release/yinsh-gui/Yinsh-gui.exe`
+
+Web, on linux (emscripten):
+- For now, you need to build the native app as well, so it generates `yngine/tables.hpp` in the process
+- `emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Release -DPLATFORM=Web`
+- `cmake --build build-web --parallel`
+- Now you can run it locally with `emrun build-web/yinsh-gui/Yinsh-gui.html`
+- Or you can host it with some web server, thought you need to configure cross-origin headers for SharedArrayBuffer to work
+- Or you can zip it for itch.io with:
+  - `cd build-web/yinsh-gui`
+  - `cp Yinsh-gui.html index.html`
+  - `zip yinsh-web.zip index.html Yinsh-gui.js Yinsh-gui.wasm`
+  - You also need to enable "SharedArrayBuffer support" on itch.io game page
+- Firefox seems to run it almost twice as fast compared to Chrome in terms of AI performance
