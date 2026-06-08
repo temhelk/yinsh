@@ -94,8 +94,8 @@ private:
 
     // Not null if we play against AI
     std::optional<Yngine::MCTS> engine;
-    std::optional<std::future<Yngine::Move>> engine_move;
     int engine_thread_count;
+    std::chrono::high_resolution_clock::time_point engine_search_start_time;
 
     std::size_t total_system_memory;
     int system_max_threads;

@@ -190,21 +190,26 @@ void Game::update() {
         if (ai_turn && !(this->place_ai_rings && in_placement)) {
             assert(this->engine);
 
-            if (!this->engine_move) {
-                this->engine_move = this->engine->search(this->ai_move_time, this->engine_thread_count);
+            if (!this->engine->is_searching()) {
+                this->engine->start_search(this->engine_thread_count);
+                this->engine_search_start_time = std::chrono::high_resolution_clock::now();
             } else {
-                const auto move_status = this->engine_move->wait_for(std::chrono::seconds(0));
+                const auto now = std::chrono::high_resolution_clock::now();
+                const std::chrono::duration<float> elapsed = now - this->engine_search_start_time;
+                if (elapsed.count() >= this->ai_move_time) {
+                    this->engine->stop_search();
+                    const auto move = this->engine->get_best_move();
 
-                if (move_status == std::future_status::ready) {
-                    const auto move = this->engine_move->get();
+                    if (!move.has_value()) {
+                        std::cerr << "WARNING: Engine didn't find any moves!" << std::endl;
+                        abort();
+                    }
 
-                    this->board_state.apply_move(move);
-                    engine->apply_move(move);
+                    this->board_state.apply_move(*move);
+                    engine->apply_move(*move);
 
-                    this->move_history.push_back(move);
+                    this->move_history.push_back(*move);
                     this->review_cursor = this->move_history.size();
-
-                    this->engine_move = std::nullopt;
                 }
             }
 
@@ -380,6 +385,8 @@ bool Game::load_game(const std::filesystem::path& path) {
     }
 
     this->load_game_stream(f);
+
+    return true;
 }
 
 bool Game::load_game_stream(std::istream& stream) {
@@ -464,7 +471,6 @@ parse_error:
     this->auto_saved    = true; // don't auto-save a loaded game
     this->board_state   = BoardState{};
     this->engine        = std::nullopt;
-    this->engine_move   = std::nullopt;
     this->selected_ring = std::nullopt;
     this->ring_moves.clear();
     this->row_remove_from = std::nullopt;
@@ -484,7 +490,6 @@ void Game::reset_game() {
     this->ring_moves.clear();
     this->row_remove_from = std::nullopt;
     this->engine          = std::nullopt;
-    this->engine_move     = std::nullopt;
     this->white_is_ai     = false;
     this->black_is_ai     = false;
     this->place_ai_rings  = false;
