@@ -1007,7 +1007,8 @@ void Game::draw_engine_analysis() {
             ImGui::Text("Confidence: %.1f%%", search_info.confidence * 100.f);
             ImGui::Text("Iterations: %'lu", search_info.iterations);
 
-            const float memory_used_ratio = (float)search_info.memory_used / this->total_system_memory;
+            const float memory_used_ratio =
+                (float)search_info.memory_used / this->engine->get_memory_limit_bytes();
 
             const auto memory_label = "Mem";
 
