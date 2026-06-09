@@ -797,7 +797,7 @@ void Game::render() {
 
         static int thread_count = this->system_max_threads;
         ImGui::SliderInt("Threads", &thread_count, 1, this->system_max_threads);
-        this->engine_thread_count = thread_count;
+        this->engine_thread_count = std::max(1, thread_count);
 
         static bool place_ai_rings_checked = false;
         ImGui::Checkbox("Place AI rings manually", &place_ai_rings_checked);
@@ -814,7 +814,7 @@ void Game::render() {
             this->ai_move_time = move_time;
             this->place_ai_rings = place_ai_rings_checked;
 
-            this->engine.emplace(this->board_state.is_blitz, memory_limit_mb * 1024 * 1024);
+            this->engine.emplace(this->board_state.is_blitz, std::max<size_t>(1, memory_limit_mb) * 1024 * 1024);
 
             this->state = Game::State::Playing;
         }
@@ -957,10 +957,10 @@ void Game::draw_engine_analysis() {
 
         static int thread_count = this->system_max_threads;
         ImGui::SliderInt("Threads", &thread_count, 1, this->system_max_threads);
-        this->engine_thread_count = thread_count;
+        this->engine_thread_count = std::max(1, thread_count);
 
         if (ImGui::Button("Start engine", ImVec2(-FLT_MIN, 0.0f))) {
-            this->engine.emplace(this->board_state.is_blitz, memory_limit_mb * 1024 * 1024);
+            this->engine.emplace(this->board_state.is_blitz, std::max<size_t>(1, memory_limit_mb) * 1024 * 1024);
 
             this->engine->set_board(this->build_engine_replay_board(this->board_state.is_blitz));
             this->engine->start_search(this->engine_thread_count);
