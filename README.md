@@ -8,6 +8,16 @@ Yinsh board game written with [raylib](https://github.com/raysan5/raylib) and [I
 
 Uses [yngine](https://github.com/temhelk/yngine) as an engine for AI
 
+## Features
+- ### Play vs AI and players locally (with blitz mode)
+  <img width="330" height="186" alt="image" src="https://github.com/user-attachments/assets/8b0807f7-777d-4bbf-a0a2-f3a08f470961" />
+- ### Configurable AI settings
+  <img width="332" height="188" alt="image" src="https://github.com/user-attachments/assets/8ef4c2e8-16c3-4738-83d0-a1faea11ff54" />
+- ### Rewind moves mid-game
+  <img width="330" height="333" alt="image" src="https://github.com/user-attachments/assets/6374c294-a115-4756-b7ac-28b3f2180e88" />
+- ### Analyze loaded games, and save games you've played
+  <img width="330" height="330" alt="image" src="https://github.com/user-attachments/assets/fb67f62e-8fb5-4f33-97d6-4042b08875ec" />
+
 ## Compilation
 The game can be compiled for Linux, Windows, and Web (WASM).
 
