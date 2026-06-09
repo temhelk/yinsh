@@ -922,6 +922,17 @@ void Game::draw_review_bar() {
 
     ImGui::Begin("Review controls", nullptr, flags);
 
+    // Arrow keys behave the same way as the buttons
+    if (IsKeyPressed(KEY_LEFT)) {
+        if (this->review_cursor != 0)
+            this->review_cursor--;
+    }
+
+    if (IsKeyPressed(KEY_RIGHT)) {
+        if (this->review_cursor < total_moves)
+            this->review_cursor++;
+    }
+
     if (ImGui::Button("|<", ImVec2{25, 25})) {
         this->review_cursor = 0;
     }; ImGui::SameLine();
@@ -934,9 +945,8 @@ void Game::draw_review_bar() {
     ImGui::SameLine();
 
     if (ImGui::Button(">", ImVec2{25, 25})) {
-        if (this->review_cursor < total_moves) {
+        if (this->review_cursor < total_moves)
             this->review_cursor++;
-        }
     }; ImGui::SameLine();
     if (ImGui::Button(">|", ImVec2{25, 25})) {
         this->review_cursor = total_moves;
