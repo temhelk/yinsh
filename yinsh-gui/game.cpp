@@ -934,12 +934,8 @@ void Game::draw_review_bar() {
 void Game::draw_engine_analysis() {
     ImGuiWindowFlags flags =
         ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoScrollWithMouse;
-
-    ImGui::SetNextWindowSizeConstraints(
-        ImVec2(300.f, -1.f),
-        ImVec2(FLT_MAX, -1.f)
-    );
+        ImGuiWindowFlags_NoScrollWithMouse |
+        ImGuiWindowFlags_AlwaysAutoResize;
 
     ImGui::Begin("Engine analysis", nullptr, flags);
 
@@ -952,7 +948,7 @@ void Game::draw_engine_analysis() {
             memory_limit_mb = total_system_memory_mb;
         }
         float memory_limit_mb_float = memory_limit_mb;
-        ImGui::SliderFloat("Memory limit", &memory_limit_mb_float, 1.f, total_system_memory_mb, "%.0f MB");
+        ImGui::SliderFloat("Memory", &memory_limit_mb_float, 1.f, total_system_memory_mb, "%.0f MB");
         memory_limit_mb = static_cast<std::size_t>(memory_limit_mb_float);
 
         static int thread_count = this->system_max_threads;
@@ -977,9 +973,14 @@ void Game::draw_engine_analysis() {
             ImGui::Text("Iterations: %'lu", search_info.iterations);
 
             const float memory_used_ratio = (float)search_info.memory_used / this->total_system_memory;
-            ImGui::ProgressBar(memory_used_ratio, ImVec2(0.0f, 0.0f));
-            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
+            const auto memory_label = "Mem";
+
+            ImGui::AlignTextToFramePadding();
             ImGui::Text("Mem");
+            ImGui::SameLine();
+
+            ImGui::ProgressBar(memory_used_ratio, ImVec2(150.f, 0.f));
 
             if (ImGui::Button("Stop engine")) {
                 this->engine->stop_search();
