@@ -3,7 +3,7 @@
 #include <yinsh-gui/board.hpp>
 #include <yinsh-gui/utils.hpp>
 #include <yinsh-gui/system.hpp>
-#include <yinsh-gui/font.h>
+#include <yinsh-gui/font.hpp>
 
 #include <raylib-cpp.hpp>
 
