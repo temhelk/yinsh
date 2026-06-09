@@ -28,6 +28,16 @@
 #include <string>
 #include <filesystem>
 
+static std::string format_with_commas(std::size_t value) {
+    std::string s = std::to_string(value);
+    int n = s.length() - 3;
+    while (n > 0) {
+        s.insert(n, ",");
+        n -= 3;
+    }
+    return s;
+}
+
 static std::tm localtime_safe(std::time_t timer)
 {
     std::tm result{};
@@ -1005,7 +1015,7 @@ void Game::draw_engine_analysis() {
             ImGui::Text("Best move: %s", move_to_string(search_info.best_move).c_str());
             ImGui::Text("Win rate: %.1f%%", search_info.win_rate * 100.f);
             ImGui::Text("Confidence: %.1f%%", search_info.confidence * 100.f);
-            ImGui::Text("Iterations: %'lu", search_info.iterations);
+            ImGui::Text("Iterations: %s", format_with_commas(search_info.iterations).c_str());
 
             const float memory_used_ratio =
                 (float)search_info.memory_used / this->engine->get_memory_limit_bytes();
