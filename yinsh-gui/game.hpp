@@ -104,6 +104,8 @@ private:
 
     std::size_t total_system_memory;
     int system_max_threads;
+
+    static Font font;
 };
 
 // @TODO: deduplicate that code and move somewhere?

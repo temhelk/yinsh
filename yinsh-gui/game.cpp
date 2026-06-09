@@ -3,6 +3,7 @@
 #include <yinsh-gui/board.hpp>
 #include <yinsh-gui/utils.hpp>
 #include <yinsh-gui/system.hpp>
+#include <yinsh-gui/font.h>
 
 #include <raylib-cpp.hpp>
 
@@ -27,6 +28,8 @@
 #include <sstream>
 #include <string>
 #include <filesystem>
+
+Font Game::font;
 
 static std::string format_with_commas(std::size_t value) {
     std::string s = std::to_string(value);
@@ -131,6 +134,15 @@ void Game::run() {
         static_cast<int>(initial_window_size.x),
         static_cast<int>(initial_window_size.y),
         "Yinsh", FLAG_WINDOW_RESIZABLE
+    );
+
+    Game::font = LoadFontFromMemory(
+        ".ttf",
+        Inter_24pt_Regular_ttf,
+        Inter_24pt_Regular_ttf_len,
+        24,
+        nullptr,
+        0
     );
 
     this->camera = raylib::Camera2D{
@@ -1041,13 +1053,13 @@ void Game::draw_engine_analysis() {
 void Game::draw_board(const BoardState& board) {
     const float line_thickness = 0.04f;
     const auto line_color = raylib::Color(0x383838FF);
-    const auto label_color = raylib::Color::White();
+    const auto label_color = raylib::Color(0x06, 0x7D, 0xF4);
 
     // Font size in world units: target ~18px on screen regardless of zoom
-    const float label_px = 18.f;
+    const float label_px = 24.f;
     const float label_size = label_px / this->camera.zoom;
     const float label_spacing = 0.f;
-    const auto font = GetFontDefault();
+    const auto font = Game::font;
 
     // Draw lines
     for (int32_t x = 0; x < 11; x++) {
@@ -1155,7 +1167,7 @@ void Game::draw_board(const BoardState& board) {
         // Place centred horizontally, just below the bottom node
         const auto draw_pos = Vector2{
             world_pos.x - text_size.x / 2.f,
-            world_pos.y + 0.15f
+            world_pos.y + 0.05f
         };
         DrawTextEx(font, letter, draw_pos, label_size, label_spacing, label_color);
     }
@@ -1168,10 +1180,11 @@ void Game::draw_board(const BoardState& board) {
         const char* num_str = TextFormat("%i", row_y + 1);
         const auto text_size = MeasureTextEx(font, num_str, label_size, label_spacing);
 
-        // Place centred vertically, just to the left of the leftmost node
+        // Place centred vertically and offset up so it seems like they come out of the axis line,
+        // and just to the left of the leftmost node
         const auto draw_pos = Vector2{
             world_pos.x - text_size.x - 0.15f,
-            world_pos.y - text_size.y / 2.f
+            world_pos.y - text_size.y / 2.f - 0.1f
         };
         DrawTextEx(font, num_str, draw_pos, label_size, label_spacing, label_color);
     }
