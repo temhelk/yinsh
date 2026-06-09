@@ -182,6 +182,10 @@ void Game::update() {
             return;
         }
 
+        // We use that to output engine's reused tree statistics after the move
+        // was applied to the engine
+        bool move_was_applied_to_engine = false;
+
         const bool in_placement = this->board_state.get_next_action() == BoardState::NextAction::RingPlacement;
         const bool ai_turn =
             ( this->board_state.is_whites_move() && this->white_is_ai) ||
@@ -195,6 +199,7 @@ void Game::update() {
             if (auto forced_move = this->engine->check_for_forced_move()) {
                 this->board_state.apply_move(*forced_move);
                 engine->apply_move(*forced_move);
+                move_was_applied_to_engine = true;
 
                 this->move_history.push_back(*forced_move);
                 this->review_cursor = this->move_history.size();
@@ -212,10 +217,22 @@ void Game::update() {
                         abort();
                     }
 
+                    // After search is concluded print the debug info about the result
+                    if (search_info) {
+                        std::cout << "DEBUG: Move search info:" << std::endl;
+                        std::cout << "DEBUG:       iterations = " << search_info->iterations << std::endl;
+                        std::cout << "DEBUG:         win_rate = " << search_info->win_rate << std::endl;
+                        std::cout << "DEBUG:       confidence = " << search_info->confidence << std::endl;
+                        std::cout << "DEBUG: memory used (MB) = " << search_info->memory_used / 1024 / 1024 << std::endl;
+                        std::cout << "DEBUG:        tree size = " << this->engine->get_tree_size() << std::endl;
+                        std::cout << std::endl;
+                    }
+
                     const auto move = search_info->best_move;
 
                     this->board_state.apply_move(move);
                     engine->apply_move(move);
+                    move_was_applied_to_engine = true;
 
                     this->move_history.push_back(move);
                     this->review_cursor = this->move_history.size();
@@ -230,6 +247,7 @@ void Game::update() {
 
                     if (this->engine) {
                         this->engine->apply_move(*move);
+                        move_was_applied_to_engine = true;
                     }
 
                     this->move_history.push_back(*move);
@@ -237,6 +255,23 @@ void Game::update() {
                 }
             }
         }
+
+
+        // After engine's apply_move print the debug info about the reused tree (if available)
+        if (this->engine && move_was_applied_to_engine) {
+            auto search_info = this->engine->get_search_info();
+
+            if (search_info) {
+                std::cout << "DEBUG: Reused tree search info:" << std::endl;
+                std::cout << "DEBUG:       iterations = " << search_info->iterations << std::endl;
+                std::cout << "DEBUG:         win_rate = " << search_info->win_rate << std::endl;
+                std::cout << "DEBUG:       confidence = " << search_info->confidence << std::endl;
+                std::cout << "DEBUG: memory used (MB) = " << search_info->memory_used / 1024 / 1024 << std::endl;
+                std::cout << "DEBUG:        tree size = " << this->engine->get_tree_size() << std::endl;
+                std::cout << std::endl;
+            }
+        }
+
     } break;
     }
 }
