@@ -1054,6 +1054,8 @@ void Game::draw_engine_analysis() {
                 this->engine->stop_search();
                 this->engine = std::nullopt;
             }
+        } else {
+            ImGui::Text("No engine data available");
         }
     }
 
