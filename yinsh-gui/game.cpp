@@ -301,6 +301,13 @@ void Game::save_game_stream(std::ostream& stream) {
         stream << "# PLAYER_COLOR " << (this->white_is_ai ? "Black" : "White") << "\n";
     }
 
+    // Mode: classical or blitz
+    if (this->board_state.is_blitz) {
+        stream << "# MODE Blitz\n";
+    } else {
+        stream << "# MODE Classical\n";
+    }
+
     // Result — count rings on board to determine winner
     const bool game_over = (this->board_state.get_next_action() == BoardState::NextAction::GameOver);
     if (!game_over) {
@@ -408,6 +415,8 @@ bool Game::load_game(const std::filesystem::path& path) {
 bool Game::load_game_stream(std::istream& stream) {
     this->reset_game();
 
+    bool save_is_blitz = false;
+
     std::vector<Yngine::Move> loaded;
     BoardState validator;
     std::string line;
@@ -419,7 +428,7 @@ bool Game::load_game_stream(std::istream& stream) {
         while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
             line.pop_back();
         // Skip blank lines and comments
-        if (line.empty() || line[0] == '#') continue;
+        if (line.empty()) continue;
 
         // Tokenise
         std::vector<std::string> tokens;
@@ -463,6 +472,15 @@ bool Game::load_game_stream(std::istream& stream) {
 
             move = Yngine::RemoveRingMove{*idx};
             parsed = true;
+        } else if (tokens[0] == "#") { // Handle all comments here
+            if (tokens.size() == 3 && tokens[1] == "MODE") {
+                const auto mode_string = tokens[2];
+
+                save_is_blitz = mode_string == "Blitz";
+            }
+
+            // We continue because comments are not moves
+            continue;
         } else {
             std::cerr << "load_game: unknown token '" << tokens[0] << "' at line " << line_num << "\n";
             return false;
@@ -483,6 +501,7 @@ parse_error:
         return false;
     }
 
+    this->board_state.is_blitz = save_is_blitz;
     this->move_history  = std::move(loaded);
     this->auto_saved    = true;
     this->rebuild_replay_board();
@@ -905,7 +924,7 @@ void Game::draw_review_bar() {
         original_cursor_position != this->review_cursor) {
         this->engine->stop_search();
 
-        const auto new_replay_board = this->build_engine_replay_board(this->reviewing_blitz);
+        const auto new_replay_board = this->build_engine_replay_board(this->board_state.is_blitz);
 
         this->engine->set_board(new_replay_board);
         this->engine->start_search(this->engine_thread_count);
@@ -940,16 +959,10 @@ void Game::draw_engine_analysis() {
         ImGui::SliderInt("Threads", &thread_count, 1, this->system_max_threads);
         this->engine_thread_count = thread_count;
 
-        static bool blitz_mode = false;
-        ImGui::Checkbox("Blitz mode", &blitz_mode);
-
         if (ImGui::Button("Start engine", ImVec2(-FLT_MIN, 0.0f))) {
-            // @TODO: we should read and store blitz vs classical mode information
-            // in the save file!
-            this->reviewing_blitz = blitz_mode;
-            this->engine.emplace(blitz_mode, memory_limit_mb * 1024 * 1024);
+            this->engine.emplace(this->board_state.is_blitz, memory_limit_mb * 1024 * 1024);
 
-            this->engine->set_board(this->build_engine_replay_board(blitz_mode));
+            this->engine->set_board(this->build_engine_replay_board(this->board_state.is_blitz));
             this->engine->start_search(this->engine_thread_count);
         }
     } else { // Engine enabled

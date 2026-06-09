@@ -91,7 +91,6 @@ private:
 
     // Move history and review state
     bool review_only = false; // if we loaded a game we don't want to be able to play
-    bool reviewing_blitz = false; // @TODO: remove this and use save file, set it on load
     std::vector<Yngine::Move> move_history;
     std::size_t review_cursor = 0; // == move_history.size() when at live position
     BoardState replay_board;       // re-derived board for review mode
