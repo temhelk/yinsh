@@ -190,17 +190,20 @@ void Game::update() {
         // AI search continues in background; we just don't apply input or moves.
     } break;
     case State::Playing: {
+        auto last_board_state_copy = this->last_board_state;
+        this->last_board_state = this->board_state.get_next_action();
+
         if (this->board_state.get_next_action() == BoardState::NextAction::GameOver) {
-            // Auto-save once when the game ends
-            if (!this->auto_saved) {
+            // Save if the game just ended
+            if (last_board_state_copy != BoardState::NextAction::GameOver) {
                 const auto time_str = get_local_time_string();
                 std::string file_name = std::format(
                     "{}.txt",
                     time_str
                 );
                 this->save_game(file_name);
-                this->auto_saved = true;
             }
+
             return;
         }
 
@@ -298,11 +301,14 @@ void Game::update() {
     }
 }
 
-void Game::rebuild_replay_board() {
-    this->replay_board = BoardState{};
-    for (std::size_t i = 0; i < this->review_cursor; i++) {
-        this->replay_board.apply_move(this->move_history[i]);
+BoardState Game::build_replay_board(std::size_t up_to) {
+    auto result = BoardState{};
+    result.is_blitz = this->board_state.is_blitz;
+
+    for (std::size_t i = 0; i < up_to; i++) {
+        result.apply_move(this->move_history[i]);
     }
+    return result;
 }
 
 Yngine::BoardState Game::build_engine_replay_board(bool is_blitz) {
@@ -560,12 +566,56 @@ parse_error:
 
     this->board_state.is_blitz = save_is_blitz;
     this->move_history  = std::move(loaded);
-    this->auto_saved    = true;
-    this->rebuild_replay_board();
+    this->replay_board = build_replay_board(this->review_cursor);
+    this->last_board_state = BoardState::NextAction::RingPlacement;
     this->review_only = true;
     this->state = State::Reviewing;
 
     return true;
+}
+
+void Game::undo_move() {
+    // We can undo a move in two scenarios:
+    // - PvP, where we undo only the last move
+    // - vs Engine, where we undo the moves until one of those moves is made py a player
+    if (this->move_history.size() == 0) {
+        return;
+    }
+
+    if (!this->white_is_ai && !this->black_is_ai) {
+        this->move_history.pop_back();
+        this->review_cursor = this->move_history.size();
+        this->replay_board = this->build_replay_board(this->review_cursor);
+
+        this->board_state = this->replay_board;
+    } else {
+        assert(this->engine);
+        this->engine->stop_search();
+
+        // Undo moves until it's player's move
+        while (this->move_history.size()) {
+            this->move_history.pop_back();
+            this->review_cursor = this->move_history.size();
+
+            BoardState new_board =
+                this->build_replay_board(this->review_cursor);
+
+            // It's player's move
+            if ( new_board.is_whites_move() && !this->white_is_ai ||
+                !new_board.is_whites_move() && !this->black_is_ai) {
+                break;
+            }
+        }
+
+        this->replay_board = this->build_replay_board(this->review_cursor);
+        this->board_state = this->replay_board;
+
+        // We have to set the new board state to the engine
+        const auto new_engine_replay_board =
+            this->build_engine_replay_board(this->board_state.is_blitz);
+
+        this->engine->set_board(new_engine_replay_board);
+    }
 }
 
 void Game::reset_game() {
@@ -573,7 +623,7 @@ void Game::reset_game() {
     this->replay_board    = BoardState{};
     this->move_history.clear();
     this->review_cursor   = 0;
-    this->auto_saved      = false;
+    this->last_board_state = BoardState::NextAction::RingPlacement;
     this->selected_ring   = std::nullopt;
     this->ring_moves.clear();
     this->row_remove_from = std::nullopt;
@@ -968,6 +1018,13 @@ void Game::draw_review_bar() {
         new_game = true;
     }
 
+    // Show the undo move button, but not in pure review mode
+    if (!this->review_only) {
+        if (ImGui::Button("Undo move", ImVec2(-FLT_MIN, 0.0f))) {
+            this->undo_move();
+        }
+    }
+
     ImGui::End();
 
     if (new_game) {
@@ -977,7 +1034,7 @@ void Game::draw_review_bar() {
 
     // Rebuild replay board everytime because it's simpler,
     // even if we didn't change anything
-    this->rebuild_replay_board();
+    this->replay_board = this->build_replay_board(this->review_cursor);
 
     if (this->review_only || this->review_cursor != total_moves) {
         this->state = State::Reviewing;

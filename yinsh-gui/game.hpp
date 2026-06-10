@@ -45,7 +45,7 @@ private:
     void update_camera();
 
     // Rebuild replay_board by replaying move_history[0..review_cursor)
-    void rebuild_replay_board();
+    BoardState build_replay_board(std::size_t up_to);
 
     // Generate engine replay board similar to rebuild_replay_board, but for engine's type
     Yngine::BoardState build_engine_replay_board(bool is_blitz);
@@ -62,6 +62,8 @@ private:
 
     // Load a native save from a stream, see load_game
     bool load_game_stream(std::istream& stream);
+
+    void undo_move();
 
     // Reset all game state and return to the mode-selection screen
     void reset_game();
@@ -94,7 +96,8 @@ private:
     std::vector<Yngine::Move> move_history;
     std::size_t review_cursor = 0; // == move_history.size() when at live position
     BoardState replay_board;       // re-derived board for review mode
-    bool auto_saved = false;       // true once we've auto-saved this game
+    // We use that to find out when the game ended and save it
+    BoardState::NextAction last_board_state = BoardState::NextAction::RingPlacement;
 
     // Not null if we play against AI
     std::optional<Yngine::MCTS> engine;
